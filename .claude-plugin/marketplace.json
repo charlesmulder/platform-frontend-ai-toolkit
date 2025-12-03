@@ -1,0 +1,22 @@
+{
+  "name": "hcc-frontend-toolkit",
+  "owner": {
+    "name": "HCC Frontend Team",
+    "email": "frontend-team@hcc.com"
+  },
+  "plugins": [
+    {
+      "name": "hcc-frontend-ai-toolkit",
+      "source": "./claude",
+      "description": "A collection of custom Claude Code agents for frontend development teams",
+      "version": "1.0.0",
+      "author": {
+        "name": "HCC Frontend Team",
+        "email": "frontend-team@hcc.com"
+      },
+      "category": "development",
+      "keywords": ["frontend", "react", "development", "hcc"],
+      "homepage": "https://github.com/RedHatInsights/platform-frontend-ai-toolkit"
+    }
+  ]
+}
