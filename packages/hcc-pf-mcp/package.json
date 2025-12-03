@@ -1,0 +1,42 @@
+{
+  "name": "@redhat-cloud-services/hcc-pf-mcp",
+  "version": "0.0.1",
+  "description": "HCC PatternFly MCP package",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "hcc-pf-mcp": "dist/index.js"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "keywords": [
+    "hcc",
+    "patternfly",
+    "mcp",
+    "red hat"
+  ],
+  "author": "Red Hat Cloud Services",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RedHatCloudServices/platform-frontend-ai-toolkit.git",
+    "directory": "packages/hcc-pf-mcp"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "tslib": "^2.3.0",
+    "zod": "^3.25.76"
+  }
+}

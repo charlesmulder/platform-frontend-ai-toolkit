@@ -1,0 +1,17 @@
+{
+  "name": "@redhat-cloud-services/hcc-pf-mcp",
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "outputs": ["{projectRoot}/dist"],
+      "options": {
+        "cwd": "packages/hcc-pf-mcp",
+        "commands": [
+          "rm -rf dist",
+          "tsc --build tsconfig.lib.json"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}
