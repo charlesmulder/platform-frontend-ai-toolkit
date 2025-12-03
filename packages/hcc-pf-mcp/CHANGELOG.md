@@ -1,3 +1,13 @@
+## 0.2.0 (2025-12-03)
+
+### 🚀 Features
+
+- add experimental PF mcp server ([fd199e7](https://github.com/RedHatInsights/platform-frontend-ai-toolkit/commit/fd199e7))
+
+### ❤️ Thank You
+
+- Martin Marosi @Hyperkid123
+
 ## 0.1.2 (2025-12-03)
 
 ### 🩹 Fixes
