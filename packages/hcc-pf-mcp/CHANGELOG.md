@@ -1,3 +1,13 @@
+## 0.1.1 (2025-12-03)
+
+### 🩹 Fixes
+
+- configure mpc package to be executable via npx ([6fd7711](https://github.com/RedHatInsights/platform-frontend-ai-toolkit/commit/6fd7711))
+
+### ❤️ Thank You
+
+- Martin Marosi @Hyperkid123
+
 ## 0.1.0 (2025-12-03)
 
 ### 🚀 Features
