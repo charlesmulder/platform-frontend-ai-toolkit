@@ -8,7 +8,9 @@
         "cwd": "packages/hcc-pf-mcp",
         "commands": [
           "rm -rf dist",
-          "tsc --build tsconfig.lib.json"
+          "tsc --build tsconfig.lib.json",
+          "mkdir -p dist/lib/examples",
+          "cp -r src/lib/examples/*.md dist/lib/examples/"
         ],
         "parallel": false
       }

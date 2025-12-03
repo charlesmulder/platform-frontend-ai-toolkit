@@ -1,6 +1,14 @@
 # @redhat-cloud-services/hcc-pf-mcp
 
-HCC PatternFly MCP package for Model Context Protocol integration.
+HCC PatternFly MCP package for Model Context Protocol integration with @patternfly/react-data-view components.
+
+## ⚠️ Temporary Solution
+
+This MCP server is a **temporary solution** until a pluggable architecture is established for the official PatternFly MCP server.
+
+📋 **Official PatternFly MCP**: https://github.com/patternfly/patternfly-mcp
+
+Once the official PatternFly MCP supports pluggable solutions, this package will be migrated or deprecated in favor of the official implementation.
 
 ## Installation
 
@@ -59,7 +67,8 @@ console.log(greet('Developer')); // "Hello, Developer from hcc-pf-mcp!"
 ## Features
 
 - Model Context Protocol (MCP) server implementation
-- PatternFly component assistance
+- @patternfly/react-data-view component assistance and examples
+- Implementation guidance for data tables, sorting, filtering, and pagination
 - TypeScript support
 - CLI and library usage
 

@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
-export function greet(name: string = 'World'): string {
-  return `Hello, ${name} from hcc-pf-mcp!`;
-}
-
+import { run } from './lib/react-data-view-mcp.js';
+export { run };
 // CLI entry point
 if (require.main === module) {
   console.log('🚀 HCC PatternFly MCP CLI is running!');
-  console.log(greet('CLI User'));
+  console.log(run());
 }
