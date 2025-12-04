@@ -208,6 +208,16 @@ When the plugin is installed, these MCP tools become available:
 #### PatternFly CSS Utilities
 - **getReactUtilityClasses** - Access PatternFly CSS utility classes for styling (spacing, display, flex, colors, typography, etc.)
 
+## Outstanding Work & Future Roadmap
+
+📋 **See our roadmap and planned integrations**: [OUTSTANDING_WORK.md](OUTSTANDING_WORK.md)
+
+This document tracks:
+- MCP server integrations (Browser Tools, Figma, Playwright)
+- New agent development (Scalprum, Data Driven Forms)
+- Team suggestions and community contributions
+- Implementation priorities and timelines
+
 ## Repository Structure
 
 This repository is organized to support multiple agenic configurations:
