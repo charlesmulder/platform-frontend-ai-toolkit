@@ -189,15 +189,24 @@ All agents use the `hcc-frontend-` prefix to avoid name collisions with other pl
 
 ## Available MCP Servers
 
-- **hcc-patternfly-data-view** - Model Context Protocol server providing @patternfly/react-data-view component documentation, examples, and implementation guidance
+- **hcc-patternfly-data-view** - Model Context Protocol server for all PatternFly packages, providing comprehensive component documentation, source code access, module discovery, and CSS utility integration
 
 📋 **For detailed MCP server documentation and standalone usage**, see: [packages/hcc-pf-mcp/README.md](packages/hcc-pf-mcp/README.md)
 
 ### MCP Server Tools
 
 When the plugin is installed, these MCP tools become available:
+
+#### Data View Documentation and Examples
 - **getPatternFlyDataViewDescription** - Get comprehensive documentation about @patternfly/react-data-view package capabilities
 - **getPatternFlyDataViewExample** - Get implementation examples for various data table scenarios (basic usage, sorting, filtering, pagination, selection, etc.)
+
+#### PatternFly Module Discovery and Source Code
+- **getAvailableModules** - Discover available PatternFly components in your local environment across react-core, react-icons, react-table, react-data-view, and react-component-groups packages
+- **getComponentSourceCode** - Retrieve the actual TypeScript/React source code for any PatternFly component
+
+#### PatternFly CSS Utilities
+- **getReactUtilityClasses** - Access PatternFly CSS utility classes for styling (spacing, display, flex, colors, typography, etc.)
 
 ## Repository Structure
 
