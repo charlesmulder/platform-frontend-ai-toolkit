@@ -44,9 +44,10 @@ export function getImplementationExampleTool(): McpTool {
       }
 
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to read implementation example '${exampleName}': ${(error as Error).message}`
+        `Failed to read implementation example '${exampleName}': ${errorMessage}`
       );
     }
   }

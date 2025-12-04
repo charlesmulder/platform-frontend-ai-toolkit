@@ -17,9 +17,10 @@ export function getDescriptionTool(): McpTool {
       }
       
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to fetch data view description: ${(error as Error).message}`
+        `Failed to fetch data view description: ${errorMessage}`
       );
     }
   }

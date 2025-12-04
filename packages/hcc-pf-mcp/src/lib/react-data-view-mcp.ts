@@ -3,11 +3,17 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { McpTool } from "./types";
 import { getDescriptionTool } from "./tools/description.js";
 import { getImplementationExampleTool } from "./tools/implementationExample";
+import { getAvailableModulesTool } from "./tools/getAvailableModules";
+import { getComponentSourceCode } from "./tools/getComponentSourceCode";
+import { getReactUtilityClasses } from "./tools/getReactUtilityClasses";
 
 export async function run() {
   const tools: McpTool[] = [
     getDescriptionTool(),
     getImplementationExampleTool(),
+    getAvailableModulesTool(),
+    getComponentSourceCode(),
+    getReactUtilityClasses()
   ]
   let server: McpServer | undefined = undefined;
 
@@ -17,16 +23,16 @@ export async function run() {
      return  process.exit(0);
     }
 
-    throw new Error("PatternFly React Data View MCP server is not running");
+    throw new Error("HCC PatternFly MCP server is not running");
   }
 
 
   try {
     server = new McpServer({
-      name: 'PatternFly React Data View MCP Server',
+      name: 'HCC PatternFly MCP Server',
       version: '1.0.0',
     }, {
-      instructions: 'You are a Model Context Protocol (MCP) server that provides information about the @patternfly/react-data-view package and its capabilities. This package is used to create PatternFly data tables with advanced features like sorting, filtering, pagination, selection, and toolbar integration. Respond to tool calls with relevant information about the @patternfly/react-data-view package and how to implement it effectively in React applications.',
+      instructions: 'You are a Model Context Protocol (MCP) server for all PatternFly packages and components. You provide comprehensive assistance with PatternFly development, including component documentation, implementation examples, source code access, module discovery, and CSS utility integration. You support all PatternFly packages: react-core, react-icons, react-table, react-data-view, react-component-groups, and react-styles.',
       capabilities: {
         resources: {},
         tools: {},
@@ -43,8 +49,8 @@ export async function run() {
   
     await server.connect(transport);
     
-    console.log('PatternFly React Data View MCP server is running...');
+    console.log('HCC PatternFly MCP server is running...');
   } catch (error) {
-    throw new Error(`Failed to start PatternFly React Data View MCP server: ${(error as Error).message}`);
+    throw new Error(`Failed to start HCC PatternFly MCP server: ${(error as Error).message}`);
   }
 }
