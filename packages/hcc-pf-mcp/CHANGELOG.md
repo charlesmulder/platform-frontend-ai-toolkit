@@ -1,3 +1,13 @@
+## 0.3.3 (2026-01-15)
+
+### 🩹 Fixes
+
+- **mcp:** PF source code resolution ([ac6931e](https://github.com/RedHatInsights/platform-frontend-ai-toolkit/commit/ac6931e))
+
+### ❤️ Thank You
+
+- Martin Marosi @Hyperkid123
+
 ## 0.3.2 (2025-12-16)
 
 ### 🩹 Fixes
