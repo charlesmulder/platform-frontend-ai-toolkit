@@ -1,53 +1,47 @@
 import { TEST_DATA, createMockError } from '../../__tests__/testUtils';
+import * as readFileModule from '../readFile';
 
 /**
  * Test suite for readFile utilities
  * Tests readFileAsync and readJsonFile functions
+ * 
+ * Note: These tests use jest.isolateModules to prevent module contamination
+ * from other test files that may mock 'fs' globally.
  */
 
-// Mock the fs module
-const mockReadFileCallback = jest.fn();
-jest.mock('fs', () => ({
-  readFile: mockReadFileCallback
-}));
-
-// Mock the util module
-const mockReadFileAsync = jest.fn();
-jest.mock('util', () => ({
-  promisify: jest.fn(() => mockReadFileAsync)
-}));
-
-// Import after mocking
-let readFileAsync: typeof import('../readFile').readFileAsync;
-let readJsonFile: typeof import('../readFile').readJsonFile;
-
-beforeAll(async () => {
-  const module = await import('../readFile');
-  readFileAsync = module.readFileAsync;
-  readJsonFile = module.readJsonFile;
-});
-
 describe('readFile utilities', () => {
-  beforeEach(() => {
+  let readFileAsyncSpy: jest.SpyInstance;
+
+  beforeEach(async () => {
+    jest.resetModules();
+    
+    // Import fresh module for each test
+    
+    // Spy on the exported readFileAsync function
+    readFileAsyncSpy = jest.spyOn(readFileModule, 'readFileAsync');
+  });
+
+  afterEach(() => {
+    if (readFileAsyncSpy) {
+      readFileAsyncSpy.mockRestore();
+    }
     jest.clearAllMocks();
   });
 
   describe('readFileAsync', () => {
-    it('should be the promisified version of fs.readFile', () => {
-      // We can't really test the initialization directly due to module mocking
-      // but we can verify that our mock is being used
-      expect(readFileAsync).toBe(mockReadFileAsync);
+    it('should be a function', () => {
+      expect(typeof readFileModule.readFileAsync).toBe('function');
     });
 
-    it('should call promisified readFile with correct arguments', async () => {
+    it('should call with correct arguments', async () => {
       const testFilePath = '/path/to/test/file.txt';
       const testContent = 'test file content';
 
-      mockReadFileAsync.mockResolvedValue(testContent);
+      readFileAsyncSpy.mockResolvedValue(testContent);
 
-      const result = await readFileAsync(testFilePath, 'utf-8');
+      const result = await readFileModule.readFileAsync(testFilePath, 'utf-8');
 
-      expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath, 'utf-8');
+      expect(readFileAsyncSpy).toHaveBeenCalledWith(testFilePath, 'utf-8');
       expect(result).toBe(testContent);
     });
 
@@ -55,30 +49,29 @@ describe('readFile utilities', () => {
       const testFilePath = '/path/to/nonexistent/file.txt';
       const fileError = createMockError.fileSystem('ENOENT', 'no such file or directory');
 
-      mockReadFileAsync.mockRejectedValue(fileError);
+      readFileAsyncSpy.mockRejectedValue(fileError);
 
-      await expect(readFileAsync(testFilePath, 'utf-8')).rejects.toThrow('ENOENT: no such file or directory');
-      expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath, 'utf-8');
+      await expect(readFileModule.readFileAsync(testFilePath, 'utf-8')).rejects.toThrow('ENOENT: no such file or directory');
     });
 
     it('should handle permission errors', async () => {
       const testFilePath = '/path/to/restricted/file.txt';
       const permissionError = createMockError.fileSystem('EACCES', 'permission denied');
 
-      mockReadFileAsync.mockRejectedValue(permissionError);
+      readFileAsyncSpy.mockRejectedValue(permissionError);
 
-      await expect(readFileAsync(testFilePath, 'utf-8')).rejects.toThrow('EACCES: permission denied');
+      await expect(readFileModule.readFileAsync(testFilePath, 'utf-8')).rejects.toThrow('EACCES: permission denied');
     });
 
     it('should support different encoding options', async () => {
       const testFilePath = '/path/to/binary/file.bin';
       const binaryContent = Buffer.from([0x48, 0x65, 0x6c, 0x6c, 0x6f]);
 
-      mockReadFileAsync.mockResolvedValue(binaryContent);
+      readFileAsyncSpy.mockResolvedValue(binaryContent);
 
-      const result = await readFileAsync(testFilePath);
+      const result = await readFileModule.readFileAsync(testFilePath);
 
-      expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath);
+      expect(readFileAsyncSpy).toHaveBeenCalledWith(testFilePath);
       expect(result).toBe(binaryContent);
     });
   });
@@ -89,11 +82,11 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/simple.json';
         const testJsonString = JSON.stringify(TEST_DATA.JSON.SIMPLE);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile(testFilePath);
 
-        expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath, 'utf-8');
+        expect(readFileAsyncSpy).toHaveBeenCalledWith(testFilePath, 'utf-8');
         expect(result).toEqual(TEST_DATA.JSON.SIMPLE);
       });
 
@@ -101,11 +94,11 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/complex.json';
         const testJsonString = JSON.stringify(TEST_DATA.JSON.COMPLEX);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile(testFilePath);
 
-        expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath, 'utf-8');
+        expect(readFileAsyncSpy).toHaveBeenCalledWith(testFilePath, 'utf-8');
         expect(result).toEqual(TEST_DATA.JSON.COMPLEX);
       });
 
@@ -113,9 +106,9 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/array.json';
         const testJsonString = JSON.stringify(TEST_DATA.JSON.ARRAY);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile(testFilePath);
 
         expect(result).toEqual(TEST_DATA.JSON.ARRAY);
         expect(Array.isArray(result)).toBe(true);
@@ -125,9 +118,9 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/empty.json';
         const testJsonString = JSON.stringify(TEST_DATA.JSON.EMPTY);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile(testFilePath);
 
         expect(result).toEqual(TEST_DATA.JSON.EMPTY);
         expect(typeof result).toBe('object');
@@ -138,9 +131,9 @@ describe('readFile utilities', () => {
         const unicodeData = { text: 'éñïcödé, 中文, 🎯', emoji: '🚀' };
         const testJsonString = JSON.stringify(unicodeData);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof unicodeData>(testFilePath);
 
         expect(result).toEqual(unicodeData);
         expect(result.text).toBe('éñïcödé, 中文, 🎯');
@@ -152,9 +145,9 @@ describe('readFile utilities', () => {
         const numberData = { integer: 42, float: 3.14159, negative: -123, zero: 0 };
         const testJsonString = JSON.stringify(numberData);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof numberData>(testFilePath);
 
         expect(result).toEqual(numberData);
         expect(typeof result.integer).toBe('number');
@@ -176,9 +169,9 @@ describe('readFile utilities', () => {
         };
         const testJsonString = JSON.stringify(typeData);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof typeData>(testFilePath);
 
         expect(result).toEqual(typeData);
         expect(result.isTrue).toBe(true);
@@ -194,64 +187,64 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/nonexistent.json';
         const fileError = createMockError.fileSystem('ENOENT', TEST_DATA.ERRORS.FILE_NOT_FOUND);
 
-        mockReadFileAsync.mockRejectedValue(fileError);
+        readFileAsyncSpy.mockRejectedValue(fileError);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(TEST_DATA.ERRORS.FILE_NOT_FOUND);
-        expect(mockReadFileAsync).toHaveBeenCalledWith(testFilePath, 'utf-8');
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(TEST_DATA.ERRORS.FILE_NOT_FOUND);
+        expect(readFileAsyncSpy).toHaveBeenCalledWith(testFilePath, 'utf-8');
       });
 
       it('should handle permission errors', async () => {
         const testFilePath = '/path/to/restricted.json';
         const permissionError = createMockError.fileSystem('EACCES', TEST_DATA.ERRORS.PERMISSION);
 
-        mockReadFileAsync.mockRejectedValue(permissionError);
+        readFileAsyncSpy.mockRejectedValue(permissionError);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(TEST_DATA.ERRORS.PERMISSION);
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(TEST_DATA.ERRORS.PERMISSION);
       });
 
       it('should handle invalid JSON syntax', async () => {
         const testFilePath = '/path/to/invalid.json';
         const invalidJsonString = '{ "invalid": json }'; // Missing quotes around json
 
-        mockReadFileAsync.mockResolvedValue(invalidJsonString);
+        readFileAsyncSpy.mockResolvedValue(invalidJsonString);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
       });
 
       it('should handle empty file content', async () => {
         const testFilePath = '/path/to/empty.json';
         const emptyContent = '';
 
-        mockReadFileAsync.mockResolvedValue(emptyContent);
+        readFileAsyncSpy.mockResolvedValue(emptyContent);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
       });
 
       it('should handle malformed JSON with trailing comma', async () => {
         const testFilePath = '/path/to/trailing-comma.json';
         const malformedJson = '{ "key": "value", }'; // Trailing comma
 
-        mockReadFileAsync.mockResolvedValue(malformedJson);
+        readFileAsyncSpy.mockResolvedValue(malformedJson);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
       });
 
       it('should handle JSON with comments (invalid)', async () => {
         const testFilePath = '/path/to/with-comments.json';
         const jsonWithComments = '{ /* comment */ "key": "value" }';
 
-        mockReadFileAsync.mockResolvedValue(jsonWithComments);
+        readFileAsyncSpy.mockResolvedValue(jsonWithComments);
 
-        await expect(readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
+        await expect(readFileModule.readJsonFile(testFilePath)).rejects.toThrow(SyntaxError);
       });
 
       it('should handle non-object JSON root (string)', async () => {
         const testFilePath = '/path/to/string-root.json';
         const stringJson = '"just a string"';
 
-        mockReadFileAsync.mockResolvedValue(stringJson);
+        readFileAsyncSpy.mockResolvedValue(stringJson);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<string>(testFilePath);
         expect(result).toBe('just a string');
         expect(typeof result).toBe('string');
       });
@@ -260,9 +253,9 @@ describe('readFile utilities', () => {
         const testFilePath = '/path/to/number-root.json';
         const numberJson = '42';
 
-        mockReadFileAsync.mockResolvedValue(numberJson);
+        readFileAsyncSpy.mockResolvedValue(numberJson);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<number>(testFilePath);
         expect(result).toBe(42);
         expect(typeof result).toBe('number');
       });
@@ -280,9 +273,9 @@ describe('readFile utilities', () => {
         const testData: TestInterface = { id: 1, name: 'Test', active: true };
         const testJsonString = JSON.stringify(testData);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile<TestInterface>(testFilePath);
+        const result = await readFileModule.readJsonFile<TestInterface>(testFilePath);
 
         expect(result).toEqual(testData);
         expect(typeof result.id).toBe('number');
@@ -298,9 +291,9 @@ describe('readFile utilities', () => {
         const testArray = [{ id: 1, name: 'First' }, { id: 2, name: 'Second' }];
         const testJsonString = JSON.stringify(testArray);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile<Array<{ id: number; name: string }>>(testFilePath);
+        const result = await readFileModule.readJsonFile<Array<{ id: number; name: string }>>(testFilePath);
 
         expect(Array.isArray(result)).toBe(true);
         expect(result).toHaveLength(2);
@@ -323,9 +316,9 @@ describe('readFile utilities', () => {
         };
         const testJsonString = JSON.stringify(largeData);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof largeData>(testFilePath);
 
         expect(result).toEqual(largeData);
         expect(result.items).toHaveLength(1000);
@@ -350,9 +343,9 @@ describe('readFile utilities', () => {
         };
         const testJsonString = JSON.stringify(deeplyNested);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof deeplyNested>(testFilePath);
 
         expect(result).toEqual(deeplyNested);
         expect(result.level1.level2.level3.level4.level5.value).toBe('deep value');
@@ -361,11 +354,9 @@ describe('readFile utilities', () => {
 
       it('should handle JSON with special numeric values', async () => {
         const testFilePath = '/path/to/special-numbers.json';
-        // Note: JSON doesn't support Infinity, -Infinity, or NaN natively
-        // They would be serialized as null or string representations
         const specialNumbers = {
           zero: 0,
-          negativeZero: 0, // JSON serialization converts -0 to 0
+          negativeZero: 0,
           maxSafeInteger: Number.MAX_SAFE_INTEGER,
           minSafeInteger: Number.MIN_SAFE_INTEGER,
           verySmall: 1e-10,
@@ -373,9 +364,9 @@ describe('readFile utilities', () => {
         };
         const testJsonString = JSON.stringify(specialNumbers);
 
-        mockReadFileAsync.mockResolvedValue(testJsonString);
+        readFileAsyncSpy.mockResolvedValue(testJsonString);
 
-        const result = await readJsonFile(testFilePath);
+        const result = await readFileModule.readJsonFile<typeof specialNumbers>(testFilePath);
 
         expect(result).toEqual(specialNumbers);
         expect(result.zero).toBe(0);

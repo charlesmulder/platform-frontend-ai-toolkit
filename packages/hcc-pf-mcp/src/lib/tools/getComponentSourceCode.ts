@@ -1,9 +1,9 @@
-import path from 'path';
 import { CallToolResult, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import { getLocalModulesMap } from '../utils/getLocalModulesMap';
 import { verifyLocalPackage } from '../utils/verifyLocalPackage';
 import { readFileAsync } from '../utils/readFile';
+import { findExportSource } from '../utils/exportScanner';
 import { McpTool } from '../types';
 
 export const getComponentSourceCode = (): McpTool => {
@@ -20,7 +20,7 @@ export const getComponentSourceCode = (): McpTool => {
       );
     }
 
-    // should be extended for other packages in the future
+    // Verify the package exists locally
     const status = await verifyLocalPackage(packageName, nodeModulesRootPath);
 
     if (!status.exists) {
@@ -29,65 +29,34 @@ export const getComponentSourceCode = (): McpTool => {
         `Package "${packageName}" not found locally. ${status.error ? status.error.message : ''}`
       );
     }
-    const modulesMap = await getLocalModulesMap(packageName, nodeModulesRootPath);
-    const componentPath = modulesMap[componentName]?.replace(/^dist\/dynamic/, 'src');
 
-    if (!componentPath) {
+    // Check if the component exists in the modules map (validates it's a known export)
+    const modulesMap = await getLocalModulesMap(packageName, nodeModulesRootPath);
+    if (!modulesMap[componentName]) {
       throw new McpError(
         ErrorCode.InvalidParams,
-        `No valid path to "${componentName}" found in available modules.`
+        `Component "${componentName}" not found in available modules for package "${packageName}".`
       );
     }
 
-    const componentDir = `${status.packageRoot}/${componentPath}`;
-    // TODO: We can also try to get directly to the component file first before checking re-exports
-    const indexFile = path.join(componentDir, 'index.ts');
+    // Scan the src directory to find the exact file that exports this component
+    const exportInfo = await findExportSource(status.packageRoot, componentName);
 
-    const indexSource = await readFileAsync(`${componentDir}/index.ts`, 'utf-8');
-
-    if (!indexSource) {
+    if (!exportInfo) {
       throw new McpError(
         ErrorCode.InternalError,
-        `Failed to read index.ts for component "${componentName}".`
+        `Failed to find source file for component "${componentName}" in package "${packageName}".`
       );
     }
 
-    const lines = indexSource.split('\n');
-    // TODO: the modules map does not provide paths for everything, need to improve that
-    const searchPattern = new RegExp(`'\\./${componentName}';?$`);
-    const importPartial = lines.find(line => searchPattern.test(line));
-
-    if (typeof importPartial === 'undefined' || !importPartial) {
-      throw new McpError(
-        ErrorCode.InternalError,
-        `Failed to find source code for component "${componentName}".`
-      );
-    }
-
-    const importPath = importPartial.split('from')[1]?.trim().replace(/['";]/g, '');
-
-    if (!importPath) {
-      throw new McpError(
-        ErrorCode.InternalError,
-        `Failed to parse import path for component "${componentName}".`
-      );
-    }
-
-    const absolutePath = path.resolve(indexFile.replace('/index.ts', ''), importPath + '.ts');
-    const absolutePathX = path.resolve(indexFile.replace('/index.ts', ''), importPath + '.tsx');
-
+    // Read the source file
     try {
-      fileContent = await readFileAsync(absolutePath, 'utf-8');
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      fileContent = await readFileAsync(exportInfo.filePath, 'utf-8');
     } catch (error) {
-      try {
-        fileContent = await readFileAsync(absolutePathX, 'utf-8');
-      } catch (error) {
-        throw new McpError(
-          ErrorCode.InternalError,
-          `Failed to read source code file for component "${componentName}": ${error}`
-        );
-      }
+      throw new McpError(
+        ErrorCode.InternalError,
+        `Failed to read source code file for component "${componentName}": ${error}`
+      );
     }
 
     return {

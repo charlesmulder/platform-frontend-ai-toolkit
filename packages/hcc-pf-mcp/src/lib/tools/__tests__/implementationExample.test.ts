@@ -1,29 +1,26 @@
-// Mock the readFile function
-const mockReadFile = jest.fn();
+/**
+ * @jest-environment node
+ */
+
+// Create mock functions before jest.mock calls
 const mockReadFileAsync = jest.fn();
 const mockPathResolve = jest.fn(() => '/mocked/path/to/file.md');
 
-jest.mock('fs', () => ({
-  default: {
-    readFile: mockReadFile
-  }
-}));
-
-jest.mock('path', () => ({
-  default: {
-    resolve: mockPathResolve
-  }
-}));
-
+// Mock util.promisify to return our mock function
 jest.mock('util', () => ({
-  promisify: jest.fn((fn) => {
-    // When promisify is called with fs.readFile, return our mock async function
-    if (fn === mockReadFile) {
-      return mockReadFileAsync;
-    }
-    return jest.fn();
-  })
+  ...jest.requireActual('util'),
+  promisify: jest.fn(() => mockReadFileAsync)
 }));
+
+// Mock path.resolve
+jest.mock('path', () => {
+  const actualPath = jest.requireActual('path');
+  return {
+    ...actualPath,
+    // @ts-ignore
+    resolve: (...args: string[]) => mockPathResolve(...args),
+  };
+});
 
 import { getImplementationExampleTool } from '../implementationExample';
 import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
@@ -38,7 +35,7 @@ import {
 
 describe('getImplementationExampleTool', () => {
   beforeEach(() => {
-    jest.resetAllMocks();
+    jest.clearAllMocks();
     // Reset path.resolve to default mock behavior
     mockPathResolve.mockReturnValue('/mocked/path/to/file.md');
   });

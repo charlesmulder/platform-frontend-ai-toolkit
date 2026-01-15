@@ -2,8 +2,7 @@
 const mockGetLocalModulesMap = jest.fn();
 const mockVerifyLocalPackage = jest.fn();
 const mockReadFileAsync = jest.fn();
-const mockPathJoin = jest.fn();
-const mockPathResolve = jest.fn();
+const mockFindExportSource = jest.fn();
 
 jest.mock('../../utils/getLocalModulesMap', () => ({
   getLocalModulesMap: mockGetLocalModulesMap
@@ -17,11 +16,8 @@ jest.mock('../../utils/readFile', () => ({
   readFileAsync: mockReadFileAsync
 }));
 
-jest.mock('path', () => ({
-  default: {
-    join: mockPathJoin,
-    resolve: mockPathResolve
-  }
+jest.mock('../../utils/exportScanner', () => ({
+  findExportSource: mockFindExportSource
 }));
 
 import { getComponentSourceCode } from '../getComponentSourceCode';
@@ -36,10 +32,6 @@ import {
 describe('getComponentSourceCode', () => {
   beforeEach(() => {
     jest.resetAllMocks();
-
-    // Set up default mocks
-    mockPathJoin.mockImplementation((...args) => args.join('/'));
-    mockPathResolve.mockImplementation((...args) => args.join('/'));
   });
 
   describe('tool configuration', () => {
@@ -113,16 +105,18 @@ describe('getComponentSourceCode', () => {
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': 'dist/dynamic/Button'
       });
-      mockPathJoin.mockReturnValue('/node_modules/@patternfly/react-core/src/Button/index.ts');
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/components/Button/Button.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
     });
 
     it('should successfully retrieve component source code', async () => {
-      const indexContent = `export { Button } from './Button';\nexport type { ButtonProps } from './Button';`;
       const componentContent = `import * as React from 'react';\nexport const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent) // index.ts
-        .mockResolvedValueOnce(componentContent); // Button.ts
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -131,29 +125,21 @@ describe('getComponentSourceCode', () => {
       expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
     });
 
-    it('should handle .tsx file extension fallback', async () => {
-      const indexContent = `export { Button } from './Button';\nexport type { ButtonProps } from './Button';`;
+    it('should call findExportSource with correct packageRoot', async () => {
       const componentContent = `import * as React from 'react';\nexport const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent) // index.ts
-        .mockRejectedValueOnce(new Error('File not found')) // Button.ts fails
-        .mockResolvedValueOnce(componentContent); // Button.tsx succeeds
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
-      const result = await toolFunction({ componentName: 'Button' });
+      await toolFunction({ componentName: 'Button' });
 
-      expectMcpTool.toHaveValidResponse(result);
-      expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
+      expect(mockFindExportSource).toHaveBeenCalledWith('/node_modules/@patternfly/react-core', 'Button');
     });
 
     it('should use default package name when not provided', async () => {
-      const indexContent = `export { Button } from './Button';`;
       const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       await toolFunction({ componentName: 'Button' });
@@ -171,13 +157,16 @@ describe('getComponentSourceCode', () => {
       mockGetLocalModulesMap.mockResolvedValue({
         'DataView': 'dist/dynamic/DataView'
       });
+      mockFindExportSource.mockResolvedValue({
+        name: 'DataView',
+        filePath: '/node_modules/@patternfly/react-data-view/src/DataView.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
 
-      const indexContent = `export { DataView } from './DataView';`;
       const componentContent = `export const DataView = () => <div>DataView</div>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       await toolFunction({
@@ -187,16 +176,14 @@ describe('getComponentSourceCode', () => {
 
       expect(mockVerifyLocalPackage).toHaveBeenCalledWith('@patternfly/react-data-view', undefined);
       expect(mockGetLocalModulesMap).toHaveBeenCalledWith('@patternfly/react-data-view', undefined);
+      expect(mockFindExportSource).toHaveBeenCalledWith('/node_modules/@patternfly/react-data-view', 'DataView');
     });
 
     it('should pass nodeModulesRootPath to utility functions', async () => {
       const customPath = '/custom/node_modules';
-      const indexContent = `export { Button } from './Button';`;
       const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       await toolFunction({
@@ -208,35 +195,28 @@ describe('getComponentSourceCode', () => {
       expect(mockGetLocalModulesMap).toHaveBeenCalledWith('@patternfly/react-core', customPath);
     });
 
-    it('should handle path transformation from dist to src', async () => {
-      mockGetLocalModulesMap.mockResolvedValue({
-        'Button': 'dist/dynamic/Button/subfolder'
-      });
-
-      const indexContent = `export { Button } from './Button';`;
+    it('should read the file from the path returned by findExportSource', async () => {
       const componentContent = `export const Button = () => <button>Test</button>;`;
+      const expectedPath = '/node_modules/@patternfly/react-core/src/components/Button/Button.tsx';
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: expectedPath,
+        kind: 'variable',
+        isDefault: false
+      });
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       await toolFunction({ componentName: 'Button' });
 
-      // Should replace 'dist/dynamic' with 'src'
-      expect(mockPathJoin).toHaveBeenCalledWith(
-        expect.stringContaining('src/Button/subfolder'),
-        'index.ts'
-      );
+      expect(mockReadFileAsync).toHaveBeenCalledWith(expectedPath, 'utf-8');
     });
 
-    it('should handle complex import parsing with quotes and semicolons', async () => {
-      const indexContent = `export { Button } from './Button';\nexport type { ButtonProps } from "./Button";`;
+    it('should return the file content from the source file', async () => {
       const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -245,22 +225,17 @@ describe('getComponentSourceCode', () => {
       expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
     });
 
-    it('should handle multiline index.ts files', async () => {
-      const indexContent = `// Button component exports
-export { Button } from './Button';
-export { ButtonVariant } from './Button';
-export type {
-  ButtonProps,
-  ButtonState
-} from './Button';
+    it('should handle different export kinds (function, class, etc)', async () => {
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/components/Button/Button.tsx',
+        kind: 'function',
+        isDefault: false
+      });
 
-// Other exports
-export { SomeOtherThing } from './Other';`;
-      const componentContent = `export const Button = () => <button>Test</button>;`;
+      const componentContent = `export function Button() { return <button>Test</button>; }`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -325,7 +300,7 @@ export { SomeOtherThing } from './Other';`;
         await toolFunction({ componentName: '' });
         fail('Expected function to throw McpError');
       } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'No valid path to "" found in available modules');
+        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'Component "" not found in available modules');
       }
     });
   });
@@ -412,11 +387,11 @@ export { SomeOtherThing } from './Other';`;
         await toolFunction({ componentName: 'Button' });
         fail('Expected function to throw McpError');
       } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'No valid path to "Button" found in available modules');
+        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'Component "Button" not found in available modules');
       }
     });
 
-    it('should throw McpError when component path is undefined', async () => {
+    it('should throw McpError when component path is undefined in modules map', async () => {
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': undefined
       });
@@ -427,11 +402,11 @@ export { SomeOtherThing } from './Other';`;
         await toolFunction({ componentName: 'Button' });
         fail('Expected function to throw McpError');
       } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'No valid path to "Button" found in available modules');
+        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'Component "Button" not found in available modules');
       }
     });
 
-    it('should throw McpError when component path is null', async () => {
+    it('should throw McpError when component path is null in modules map', async () => {
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': null
       });
@@ -442,12 +417,12 @@ export { SomeOtherThing } from './Other';`;
         await toolFunction({ componentName: 'Button' });
         fail('Expected function to throw McpError');
       } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'No valid path to "Button" found in available modules');
+        expectMcpTool.toBeValidMcpError(error, ErrorCode.InvalidParams, 'Component "Button" not found in available modules');
       }
     });
   });
 
-  describe('index file reading', () => {
+  describe('export scanning', () => {
     beforeEach(() => {
       mockVerifyLocalPackage.mockResolvedValue({
         exists: true,
@@ -458,27 +433,8 @@ export { SomeOtherThing } from './Other';`;
       });
     });
 
-    it('should throw error when index.ts file cannot be read', async () => {
-      const fsError = createMockError.fileSystem('ENOENT', 'no such file or directory');
-      mockReadFileAsync.mockRejectedValue(fsError);
-
-      const [, , toolFunction] = getComponentSourceCode();
-
-      try {
-        await toolFunction({ componentName: 'Button' });
-        fail('Expected function to throw error');
-      } catch (error) {
-        if (errorTypeGuards.isError(error)) {
-          // This will propagate as the original error from readFileAsync
-          expect(error.message).toContain('ENOENT: no such file or directory');
-        } else {
-          fail('Expected error to be Error');
-        }
-      }
-    });
-
-    it('should throw McpError when index.ts returns falsy content', async () => {
-      mockReadFileAsync.mockResolvedValue(null);
+    it('should throw McpError when export source is not found', async () => {
+      mockFindExportSource.mockResolvedValue(undefined);
 
       const [, , toolFunction] = getComponentSourceCode();
 
@@ -486,115 +442,23 @@ export { SomeOtherThing } from './Other';`;
         await toolFunction({ componentName: 'Button' });
         fail('Expected function to throw McpError');
       } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to read index.ts for component "Button"');
+        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to find source file for component "Button"');
       }
     });
 
-    it('should throw McpError when index.ts returns empty string', async () => {
-      mockReadFileAsync.mockResolvedValue('');
-
-      const [, , toolFunction] = getComponentSourceCode();
-
-      try {
-        await toolFunction({ componentName: 'Button' });
-        fail('Expected function to throw McpError');
-      } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to read index.ts for component "Button"');
-      }
-    });
-  });
-
-  describe('import parsing', () => {
-    beforeEach(() => {
-      mockVerifyLocalPackage.mockResolvedValue({
-        exists: true,
-        packageRoot: '/node_modules/@patternfly/react-core'
+    it('should call findExportSource with correct parameters', async () => {
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/Button.tsx',
+        kind: 'variable',
+        isDefault: false
       });
-      mockGetLocalModulesMap.mockResolvedValue({
-        'Button': 'dist/dynamic/Button'
-      });
-    });
-
-    it('should throw McpError when import pattern not found', async () => {
-      const indexContent = `export { Card } from './Card';\nexport { Modal } from './Modal';`;
-      mockReadFileAsync.mockResolvedValue(indexContent);
+      mockReadFileAsync.mockResolvedValue('export const Button = () => <button>Test</button>;');
 
       const [, , toolFunction] = getComponentSourceCode();
+      await toolFunction({ componentName: 'Button' });
 
-      try {
-        await toolFunction({ componentName: 'Button' });
-        fail('Expected function to throw McpError');
-      } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to find source code for component "Button"');
-      }
-    });
-
-    it('should throw McpError when import path cannot be parsed', async () => {
-      const indexContent = `export { Button }`; // Missing 'from' clause
-      mockReadFileAsync.mockResolvedValue(indexContent);
-
-      const [, , toolFunction] = getComponentSourceCode();
-
-      try {
-        await toolFunction({ componentName: 'Button' });
-        fail('Expected function to throw McpError');
-      } catch (error) {
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to find source code for component "Button"');
-      }
-    });
-
-    it('should throw McpError when import path is malformed', async () => {
-      const indexContent = `export { Button } from `; // No path
-      mockReadFileAsync.mockResolvedValue(indexContent);
-
-      const [, , toolFunction] = getComponentSourceCode();
-
-      try {
-        await toolFunction({ componentName: 'Button' });
-        fail('Expected function to throw McpError');
-      } catch (error) {
-        // This will trigger the "Failed to find source code" error first, since the regex won't match
-        expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError, 'Failed to find source code for component "Button"');
-      }
-    });
-
-    it('should handle various quote types and semicolons', async () => {
-      // Reset mocks for this test
-      mockVerifyLocalPackage.mockResolvedValue({
-        exists: true,
-        packageRoot: '/node_modules/@patternfly/react-core'
-      });
-      mockGetLocalModulesMap.mockResolvedValue({
-        'Button': 'dist/dynamic/Button'
-      });
-
-      const indexContent = `export { Button } from './Button';`;
-      const componentContent = `export const Button = () => <button>Test</button>;`;
-
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
-
-      const [, , toolFunction] = getComponentSourceCode();
-      const result = await toolFunction({ componentName: 'Button' });
-
-      expectMcpTool.toHaveValidResponse(result);
-      expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
-    });
-
-    it('should handle imports without semicolons', async () => {
-      const indexContent = `export { Button } from './Button'`;
-      const componentContent = `export const Button = () => <button>Test</button>;`;
-
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
-
-      const [, , toolFunction] = getComponentSourceCode();
-      const result = await toolFunction({ componentName: 'Button' });
-
-      expectMcpTool.toHaveValidResponse(result);
-      expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
+      expect(mockFindExportSource).toHaveBeenCalledWith('/node_modules/@patternfly/react-core', 'Button');
     });
   });
 
@@ -607,16 +471,18 @@ export { SomeOtherThing } from './Other';`;
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': 'dist/dynamic/Button'
       });
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/components/Button/Button.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
     });
 
-    it('should throw McpError when both .ts and .tsx files fail to read', async () => {
-      const indexContent = `export { Button } from './Button';`;
+    it('should throw McpError when source file cannot be read', async () => {
       const fsError = createMockError.fileSystem('ENOENT', 'no such file or directory');
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent) // index.ts succeeds
-        .mockRejectedValueOnce(fsError) // Button.ts fails
-        .mockRejectedValueOnce(fsError); // Button.tsx fails
+      mockReadFileAsync.mockRejectedValue(fsError);
 
       const [, , toolFunction] = getComponentSourceCode();
 
@@ -629,13 +495,9 @@ export { SomeOtherThing } from './Other';`;
     });
 
     it('should handle permission errors when reading source files', async () => {
-      const indexContent = `export { Button } from './Button';`;
       const permissionError = createMockError.fileSystem('EACCES', 'permission denied');
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockRejectedValueOnce(permissionError)
-        .mockRejectedValueOnce(permissionError);
+      mockReadFileAsync.mockRejectedValue(permissionError);
 
       const [, , toolFunction] = getComponentSourceCode();
 
@@ -652,22 +514,24 @@ export { SomeOtherThing } from './Other';`;
       }
     });
 
-    it('should prioritize .ts file over .tsx file', async () => {
-      const indexContent = `export { Button } from './Button';`;
-      const tsContent = `export const Button = () => <button>TS Version</button>;`;
-      const tsxContent = `export const Button = () => <button>TSX Version</button>;`;
+    it('should read the file at the path returned by findExportSource', async () => {
+      const expectedPath = '/node_modules/@patternfly/react-core/src/components/Button/Button.tsx';
+      const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent) // index.ts
-        .mockResolvedValueOnce(tsContent); // Button.ts succeeds first
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: expectedPath,
+        kind: 'variable',
+        isDefault: false
+      });
+      mockReadFileAsync.mockResolvedValue(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
 
+      expect(mockReadFileAsync).toHaveBeenCalledWith(expectedPath, 'utf-8');
       expectMcpTool.toHaveValidResponse(result);
-      expect(expectMcpTool.getTextContent(result)).toBe(tsContent);
-      // Should not even try to read .tsx since .ts succeeded
-      expect(mockReadFileAsync).toHaveBeenCalledTimes(2);
+      expect(expectMcpTool.getTextContent(result)).toBe(componentContent);
     });
   });
 
@@ -696,8 +560,6 @@ export { SomeOtherThing } from './Other';`;
     });
 
     it('should handle non-Error objects in file reading', async () => {
-      const indexContent = `export { Button } from './Button';`;
-
       mockVerifyLocalPackage.mockResolvedValue({
         exists: true,
         packageRoot: '/node_modules/@patternfly/react-core'
@@ -705,11 +567,14 @@ export { SomeOtherThing } from './Other';`;
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': 'dist/dynamic/Button'
       });
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/Button.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockRejectedValueOnce('String error')
-        .mockRejectedValueOnce('Another string error');
+      mockReadFileAsync.mockRejectedValueOnce('String error');
 
       const [, , toolFunction] = getComponentSourceCode();
 
@@ -719,9 +584,35 @@ export { SomeOtherThing } from './Other';`;
       } catch (error) {
         expectMcpTool.toBeValidMcpError(error, ErrorCode.InternalError);
         if (errorTypeGuards.isMcpError(error)) {
-          expect(error.message).toContain('Another string error');
+          expect(error.message).toContain('String error');
         } else {
           fail('Expected error to be McpError');
+        }
+      }
+    });
+
+    it('should handle findExportSource errors', async () => {
+      mockVerifyLocalPackage.mockResolvedValue({
+        exists: true,
+        packageRoot: '/node_modules/@patternfly/react-core'
+      });
+      mockGetLocalModulesMap.mockResolvedValue({
+        'Button': 'dist/dynamic/Button'
+      });
+
+      const scanError = createMockError.standard('Failed to scan exports');
+      mockFindExportSource.mockRejectedValue(scanError);
+
+      const [, , toolFunction] = getComponentSourceCode();
+
+      try {
+        await toolFunction({ componentName: 'Button' });
+        fail('Expected function to throw error');
+      } catch (error) {
+        if (errorTypeGuards.isError(error)) {
+          expect(error.message).toContain('Failed to scan exports');
+        } else {
+          fail('Expected error to be Error');
         }
       }
     });
@@ -736,15 +627,18 @@ export { SomeOtherThing } from './Other';`;
       mockGetLocalModulesMap.mockResolvedValue({
         'Button': 'dist/dynamic/Button'
       });
+      mockFindExportSource.mockResolvedValue({
+        name: 'Button',
+        filePath: '/node_modules/@patternfly/react-core/src/Button.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
     });
 
     it('should always return content array with text type', async () => {
-      const indexContent = `export { Button } from './Button';`;
       const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -753,12 +647,9 @@ export { SomeOtherThing } from './Other';`;
     });
 
     it('should not include additional properties in response', async () => {
-      const indexContent = `export { Button } from './Button';`;
       const componentContent = `export const Button = () => <button>Test</button>;`;
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(componentContent);
+      mockReadFileAsync.mockResolvedValueOnce(componentContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -769,12 +660,9 @@ export { SomeOtherThing } from './Other';`;
     });
 
     it('should preserve exact source code content without modification', async () => {
-      const indexContent = `export { Button } from './Button';`;
       const specialContent = TEST_DATA.MARKDOWN.WITH_EMOJI + '\n// Component with special chars @#$%^&*()';
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(specialContent);
+      mockReadFileAsync.mockResolvedValueOnce(specialContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'Button' });
@@ -845,7 +733,6 @@ export { SomeOtherThing } from './Other';`;
     });
 
     it('should handle large source code files', async () => {
-      const indexContent = `export { LargeComponent } from './LargeComponent';`;
       const largeContent = 'const LargeComponent = () => {\n' + '  // '.repeat(10000) + 'Large content\n  return <div>Large</div>;\n};';
 
       mockVerifyLocalPackage.mockResolvedValue({
@@ -855,10 +742,14 @@ export { SomeOtherThing } from './Other';`;
       mockGetLocalModulesMap.mockResolvedValue({
         'LargeComponent': 'dist/dynamic/LargeComponent'
       });
+      mockFindExportSource.mockResolvedValue({
+        name: 'LargeComponent',
+        filePath: '/node_modules/@patternfly/react-core/src/LargeComponent.tsx',
+        kind: 'variable',
+        isDefault: false
+      });
 
-      mockReadFileAsync
-        .mockResolvedValueOnce(indexContent)
-        .mockResolvedValueOnce(largeContent);
+      mockReadFileAsync.mockResolvedValueOnce(largeContent);
 
       const [, , toolFunction] = getComponentSourceCode();
       const result = await toolFunction({ componentName: 'LargeComponent' });

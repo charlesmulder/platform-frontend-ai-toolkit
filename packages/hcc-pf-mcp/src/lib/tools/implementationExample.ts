@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import fs from 'fs';
-import path from 'path';
+import * as fs from 'fs';
+import * as path from 'path';
 import {promisify} from 'util'
 
 import { CallToolResult, ErrorCode, McpError } from "@modelcontextprotocol/sdk/types.js";
@@ -45,6 +45,8 @@ export function getImplementationExampleTool(): McpTool {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      console.log(error)
+      console.log(path)
       throw new McpError(
         ErrorCode.InternalError,
         `Failed to read implementation example '${exampleName}': ${errorMessage}`
