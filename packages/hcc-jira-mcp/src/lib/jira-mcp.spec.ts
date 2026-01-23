@@ -2,17 +2,18 @@ import { run } from './jira-mcp';
 import { getCredentials } from './utils/credentialStore.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import logger from './utils/logger.js';
 
 // Mock dependencies
 jest.mock('./utils/credentialStore.js');
 jest.mock('@modelcontextprotocol/sdk/server/mcp.js');
 jest.mock('@modelcontextprotocol/sdk/server/stdio.js');
+jest.mock('./utils/logger.js');
 
 describe('jira-mcp server', () => {
   let mockServer: jest.Mocked<McpServer>;
   let mockTransport: jest.Mocked<StdioServerTransport>;
   let originalEnv: NodeJS.ProcessEnv;
-  let consoleErrorSpy: jest.SpyInstance;
   let processExitSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -20,9 +21,6 @@ describe('jira-mcp server', () => {
 
     // Save original environment
     originalEnv = { ...process.env };
-
-    // Mock console.error to avoid noise in tests
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
     // Mock process.exit
     processExitSpy = jest.spyOn(process, 'exit').mockImplementation((code) => {
@@ -47,7 +45,6 @@ describe('jira-mcp server', () => {
   afterEach(() => {
     // Restore environment
     process.env = originalEnv;
-    consoleErrorSpy.mockRestore();
     processExitSpy.mockRestore();
   });
 
@@ -70,7 +67,7 @@ describe('jira-mcp server', () => {
       );
 
       expect(mockServer.connect).toHaveBeenCalledWith(mockTransport);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.log).toHaveBeenCalledWith(
         '✓ Using JIRA credentials from environment variables'
       );
     });
@@ -116,7 +113,7 @@ describe('jira-mcp server', () => {
       expect(getCredentials).toHaveBeenCalled();
       expect(McpServer).toHaveBeenCalled();
       expect(mockServer.connect).toHaveBeenCalled();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.log).toHaveBeenCalledWith(
         '✓ Using JIRA credentials from system keychain'
       );
     });
@@ -129,7 +126,7 @@ describe('jira-mcp server', () => {
 
       await expect(run()).rejects.toThrow('Process exited with code 1');
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Failed to load JIRA credentials from keychain')
       );
     });
@@ -153,7 +150,7 @@ describe('jira-mcp server', () => {
       });
 
       await expect(run()).rejects.toThrow('Process exited with code 1');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Server init failed')
       );
     });
@@ -165,7 +162,7 @@ describe('jira-mcp server', () => {
       mockServer.connect.mockRejectedValue(new Error('Connection failed'));
 
       await expect(run()).rejects.toThrow('Process exited with code 1');
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.error).toHaveBeenCalledWith(
         expect.stringContaining('Connection failed')
       );
     });
@@ -205,7 +202,7 @@ describe('jira-mcp server', () => {
 
       // Should fall back to keychain when only one env var is set
       expect(getCredentials).toHaveBeenCalled();
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.log).toHaveBeenCalledWith(
         '✓ Using JIRA credentials from system keychain'
       );
     });

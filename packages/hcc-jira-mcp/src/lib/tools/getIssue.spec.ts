@@ -26,7 +26,7 @@ describe('getIssueTool', () => {
   });
 
   describe('single issue search', () => {
-    it('should return detailed view for single issue', async () => {
+    it('should return JSON format for single issue', async () => {
       const mockIssue = {
         key: 'RHCLOUD-12345',
         fields: {
@@ -54,14 +54,16 @@ describe('getIssueTool', () => {
       const result = await handler({ jql: 'issuekey=RHCLOUD-12345', maxResults: 50 });
 
       expect(result.content[0].type).toBe('text');
-      expect(result.content[0].text).toContain('RHCLOUD-12345');
-      expect(result.content[0].text).toContain('Test Issue');
-      expect(result.content[0].text).toContain('**Type:** Bug');
-      expect(result.content[0].text).toContain('**Status:** Open');
-      expect(result.content[0].text).toContain('**Priority:** High');
-      expect(result.content[0].text).toContain('**Assignee:** John Doe');
-      expect(result.content[0].text).toContain('**Reporter:** Jane Smith');
-      expect(result.content[0].text).toContain('This is a test issue description');
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.jql).toBe('issuekey=RHCLOUD-12345');
+      expect(response.total).toBe(1);
+      expect(response.maxResults).toBe(50);
+      expect(response.issues).toHaveLength(1);
+      expect(response.issues[0].key).toBe('RHCLOUD-12345');
+      expect(response.issues[0].fields.summary).toBe('Test Issue');
+      expect(response.issues[0].fields.status.name).toBe('Open');
+      expect(response.issues[0].fields.priority.name).toBe('High');
     });
 
     it('should handle missing optional fields', async () => {
@@ -84,14 +86,17 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'issuekey=RHCLOUD-12345' });
 
-      expect(result.content[0].text).toContain('Unassigned');
-      expect(result.content[0].text).toContain('Unknown');
-      expect(result.content[0].text).toContain('No description');
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.issues[0].fields.summary).toBe('Test Issue');
+      expect(response.issues[0].fields.status.name).toBe('Open');
+      expect(response.issues[0].fields.assignee).toBeUndefined();
+      expect(response.issues[0].fields.description).toBeUndefined();
     });
   });
 
   describe('multiple issues search', () => {
-    it('should return table format for multiple issues', async () => {
+    it('should return JSON format for multiple issues', async () => {
       const mockIssues = [
         {
           key: 'RHCLOUD-1',
@@ -126,15 +131,19 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'assignee=currentUser()', maxResults: 50 });
 
-      expect(result.content[0].text).toContain('| Key | Summary | Status | Assignee | Priority | Updated |');
-      expect(result.content[0].text).toContain('RHCLOUD-1');
-      expect(result.content[0].text).toContain('First Issue');
-      expect(result.content[0].text).toContain('RHCLOUD-2');
-      expect(result.content[0].text).toContain('Second Issue');
-      expect(result.content[0].text).toContain('**Found:** 2 issue(s)');
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.jql).toBe('assignee=currentUser()');
+      expect(response.total).toBe(2);
+      expect(response.maxResults).toBe(50);
+      expect(response.issues).toHaveLength(2);
+      expect(response.issues[0].key).toBe('RHCLOUD-1');
+      expect(response.issues[0].fields.summary).toBe('First Issue');
+      expect(response.issues[1].key).toBe('RHCLOUD-2');
+      expect(response.issues[1].fields.summary).toBe('Second Issue');
     });
 
-    it('should truncate long summaries in table view', async () => {
+    it('should include full summaries in JSON response', async () => {
       const longSummary = 'A'.repeat(100);
       const mockIssue = {
         key: 'RHCLOUD-1',
@@ -156,12 +165,13 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'project=RHCLOUD' });
 
-      const summaryMatch = result.content[0].text.match(/\| [^|]+ \| ([^|]+) \|/);
-      expect(summaryMatch).toBeTruthy();
-      expect(summaryMatch![1].trim().length).toBeLessThanOrEqual(50);
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.issues[0].fields.summary).toBe(longSummary);
+      expect(response.issues[0].fields.summary.length).toBe(100);
     });
 
-    it('should indicate when showing partial results', async () => {
+    it('should include total count when showing partial results', async () => {
       const mockIssues = Array(5).fill(null).map((_, i) => ({
         key: `RHCLOUD-${i}`,
         fields: {
@@ -182,7 +192,10 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'project=RHCLOUD' });
 
-      expect(result.content[0].text).toContain('**Found:** 100 issue(s) (showing first 5)');
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.total).toBe(100);
+      expect(response.issues).toHaveLength(5);
     });
   });
 
@@ -281,7 +294,11 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'project=NONEXISTENT' });
 
-      expect(result.content[0].text).toContain('No issues found for JQL query');
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.jql).toBe('project=NONEXISTENT');
+      expect(response.total).toBe(0);
+      expect(response.issues).toEqual([]);
       expect(result.isError).toBeUndefined();
     });
 
@@ -348,7 +365,7 @@ describe('getIssueTool', () => {
   });
 
   describe('date formatting', () => {
-    it('should format dates correctly', async () => {
+    it('should preserve original date format in JSON', async () => {
       const mockIssue = {
         key: 'RHCLOUD-1',
         fields: {
@@ -369,9 +386,10 @@ describe('getIssueTool', () => {
       const [, , handler] = getIssueTool(mockContext);
       const result = await handler({ jql: 'key=RHCLOUD-1' });
 
-      // Dates should be formatted as locale strings
-      expect(result.content[0].text).toMatch(/\*\*Created:\*\* \d+\/\d+\/\d+/);
-      expect(result.content[0].text).toMatch(/\*\*Updated:\*\* \d+\/\d+\/\d+/);
+      const textContent = result.content[0] as { type: 'text'; text: string };
+      const response = JSON.parse(textContent.text);
+      expect(response.issues[0].fields.created).toBe('2024-01-15T10:30:00.000Z');
+      expect(response.issues[0].fields.updated).toBe('2024-01-20T15:45:00.000Z');
     });
   });
 });
