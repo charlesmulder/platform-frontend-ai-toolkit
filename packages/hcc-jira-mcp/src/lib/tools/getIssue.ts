@@ -52,69 +52,27 @@ export function getIssueTool(context: JiraContext): McpTool {
             content: [
               {
                 type: "text",
-                text: `No issues found for JQL query: ${jql}`
+                text: JSON.stringify({
+                  jql,
+                  total: 0,
+                  issues: []
+                }, null, 2)
               }
             ]
           };
         }
 
-        const total = searchResult.total || 0;
-        const issues = searchResult.issues;
-
-        // Format results
-        let result = `# JIRA Search Results\n\n`;
-        result += `**Query:** \`${jql}\`\n`;
-        result += `**Found:** ${total} issue(s)`;
-        if (total > issues.length) {
-          result += ` (showing first ${issues.length})`;
-        }
-        result += `\n\n`;
-
-        // If only one issue, show full details
-        if (issues.length === 1) {
-          const issue = issues[0];
-          const summary = issue.fields?.summary || 'No summary';
-          const status = issue.fields?.status?.name || 'Unknown';
-          const assignee = issue.fields?.assignee?.displayName || 'Unassigned';
-          const reporter = issue.fields?.reporter?.displayName || 'Unknown';
-          const created = issue.fields?.created ? new Date(issue.fields.created).toLocaleDateString() : 'Unknown';
-          const updated = issue.fields?.updated ? new Date(issue.fields.updated).toLocaleDateString() : 'Unknown';
-          const description = issue.fields?.description || 'No description';
-          const issueType = issue.fields?.issuetype?.name || 'Unknown';
-          const priority = issue.fields?.priority?.name || 'Unknown';
-
-          result += `## ${issue.key}: ${summary}\n\n`;
-          result += `**Type:** ${issueType}\n`;
-          result += `**Status:** ${status}\n`;
-          result += `**Priority:** ${priority}\n`;
-          result += `**Assignee:** ${assignee}\n`;
-          result += `**Reporter:** ${reporter}\n`;
-          result += `**Created:** ${created}\n`;
-          result += `**Updated:** ${updated}\n\n`;
-          result += `### Description\n${description}\n\n`;
-          result += `**URL:** ${context.baseUrl}/browse/${issue.key}`;
-        } else {
-          // Multiple issues - show summary table
-          result += `| Key | Summary | Status | Assignee | Priority | Updated |\n`;
-          result += `|-----|---------|--------|----------|----------|----------|\n`;
-
-          issues.forEach((issue: any) => {
-            const key = issue.key || 'N/A';
-            const summary = (issue.fields?.summary || 'No summary').substring(0, 50);
-            const status = issue.fields?.status?.name || 'Unknown';
-            const assignee = issue.fields?.assignee?.displayName || 'Unassigned';
-            const priority = issue.fields?.priority?.name || 'Unknown';
-            const updated = issue.fields?.updated ? new Date(issue.fields.updated).toLocaleDateString() : 'Unknown';
-
-            result += `| [${key}](${context.baseUrl}/browse/${key}) | ${summary} | ${status} | ${assignee} | ${priority} | ${updated} |\n`;
-          });
-        }
-
+        // Return the raw response data as JSON for chaining with other tools
         return {
           content: [
             {
               type: "text",
-              text: result
+              text: JSON.stringify({
+                jql,
+                total: searchResult.total || 0,
+                maxResults: limit,
+                issues: searchResult.issues
+              }, null, 2)
             }
           ]
         };

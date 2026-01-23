@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { McpTool, JiraContext } from "./types";
 import { getIssueTool } from "./tools/getIssue";
 import { getCredentials } from "./utils/credentialStore.js";
+import logger from "./utils/logger.js";
 
 export async function run() {
   let server: McpServer | undefined = undefined;
@@ -29,14 +30,14 @@ export async function run() {
         baseUrl: envBaseUrl,
         apiToken: envApiToken,
       };
-      console.error('✓ Using JIRA credentials from environment variables');
+      logger.log('✓ Using JIRA credentials from environment variables');
     } else {
       // Fall back to keychain (already validated by index.ts)
       credentials = await getCredentials();
       if (!credentials) {
         throw new Error('Failed to load JIRA credentials from keychain.');
       }
-      console.error('✓ Using JIRA credentials from system keychain');
+      logger.log('✓ Using JIRA credentials from system keychain');
     }
 
     // Create JIRA context for tools
@@ -73,7 +74,7 @@ Connected to JIRA instance: ${credentials.baseUrl}`,
     await server.connect(transport);
 
   } catch (error) {
-    console.error(`Failed to start HCC JIRA MCP server: ${(error as Error).message}`);
+    logger.error(`Failed to start HCC JIRA MCP server: ${(error as Error).message}`);
     process.exit(1);
   }
 }

@@ -1,20 +1,21 @@
 import prompts from 'prompts';
 import { storeCredentials, getCredentials, deleteCredentials, hasCredentials } from './credentialStore.js';
+import logger from './logger.js';
 
 export async function runSetup(isFirstRun: boolean = false): Promise<boolean> {
   if (isFirstRun) {
-    console.log('\n🔧 JIRA MCP Server - First Time Setup\n');
-    console.log('Welcome! Let\'s configure your JIRA connection.\n');
+    logger.log('\n🔧 JIRA MCP Server - First Time Setup\n');
+    logger.log('Welcome! Let\'s configure your JIRA connection.\n');
   } else {
-    console.log('\n🔧 HCC JIRA MCP Setup\n');
+    logger.log('\n🔧 HCC JIRA MCP Setup\n');
   }
 
   // Check if credentials already exist
   const hasExisting = await hasCredentials();
   if (hasExisting && !isFirstRun) {
     const existing = await getCredentials();
-    console.log('⚠️  Existing configuration found:');
-    console.log(`   JIRA URL: ${existing?.baseUrl}\n`);
+    logger.log('⚠️  Existing configuration found:');
+    logger.log(`   JIRA URL: ${existing?.baseUrl}\n`);
 
     const { overwrite } = await prompts({
       type: 'confirm',
@@ -24,13 +25,13 @@ export async function runSetup(isFirstRun: boolean = false): Promise<boolean> {
     });
 
     if (!overwrite) {
-      console.log('\n✅ Setup cancelled. Existing configuration preserved.');
+      logger.log('\n✅ Setup cancelled. Existing configuration preserved.');
       return false;
     }
 
     // Delete existing credentials
     await deleteCredentials();
-    console.log('\n🗑️  Existing configuration removed.\n');
+    logger.log('\n🗑️  Existing configuration removed.\n');
   }
 
   // Prompt for JIRA credentials
@@ -62,7 +63,7 @@ export async function runSetup(isFirstRun: boolean = false): Promise<boolean> {
 
   // Check if user cancelled
   if (!responses.baseUrl || !responses.apiToken) {
-    console.log('\n❌ Setup cancelled.');
+    logger.log('\n❌ Setup cancelled.');
     return false;
   }
 
@@ -73,21 +74,21 @@ export async function runSetup(isFirstRun: boolean = false): Promise<boolean> {
       apiToken: responses.apiToken,
     });
 
-    console.log('\n✅ Configuration saved successfully!');
-    console.log('\n📝 Your JIRA API token has been securely stored in your system keychain.');
-    console.log('   - macOS: Keychain Access');
-    console.log('   - Windows: Credential Manager');
-    console.log('   - Linux: Secret Service API / libsecret\n');
+    logger.log('\n✅ Configuration saved successfully!');
+    logger.log('\n📝 Your JIRA API token has been securely stored in your system keychain.');
+    logger.log('   - macOS: Keychain Access');
+    logger.log('   - Windows: Credential Manager');
+    logger.log('   - Linux: Secret Service API / libsecret\n');
 
     if (isFirstRun) {
-      console.log('🚀 Setup complete! The MCP server will now start...\n');
+      logger.log('🚀 Setup complete! The MCP server will now start...\n');
     } else {
-      console.log('You can now use the HCC JIRA MCP server with your AI assistant.\n');
+      logger.log('You can now use the HCC JIRA MCP server with your AI assistant.\n');
     }
 
     return true;
   } catch (error) {
-    console.error('\n❌ Failed to save configuration:', (error as Error).message);
+    logger.error('\n❌ Failed to save configuration:', (error as Error).message);
     return false;
   }
 }
