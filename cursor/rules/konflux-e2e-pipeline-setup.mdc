@@ -705,6 +705,10 @@ The developer needs to ensure the following credentials are stored in Vault at p
 
 **Setting up Vault credentials:**
 
+**Recommended Approach: ExternalSecrets with Vault**
+
+The recommended process is to establish external secrets using Vault, which provides centralized secret management and automatic rotation. Follow one of these options:
+
 **Option 1: If you have Vault access**
 - Access Vault and create a secret at `creds/konflux/<app-name>`
 - Add all four required properties with the appropriate credential values
@@ -739,7 +743,30 @@ If you can't update app-interface yourself, provide your platform team with:
 
 Once credentials are in Vault, they will be automatically synced to Konflux via the ExternalSecret you'll create in the next step.
 
-**10c. Generate ExternalSecret YAML**
+**Alternative Approach: Direct Kubernetes Secrets (at team's discretion)**
+
+While the ExternalSecret approach is recommended for production use, teams may optionally create Kubernetes secrets directly using the Konflux UI if that better fits their workflow:
+
+1. **Access the Konflux UI** for your namespace
+2. **Navigate to Secrets** section
+3. **Create a new secret** with the following configuration:
+   - Secret name: `<app-name>-credentials-secret`
+   - Secret type: Opaque
+   - Add the required key-value pairs:
+     - `e2e-user`: Your E2E test username
+     - `e2e-password`: Your E2E test password
+     - `e2e-hcc-env-url`: HCC environment URL
+     - `e2e-stage-actual-hostname`: Stage environment hostname
+
+**Note:** When using this approach:
+- You skip steps 10c (Generate ExternalSecret YAML) and 10d (Submit ExternalSecret to konflux-release-data)
+- Secrets created this way do NOT auto-rotate from Vault
+- You're responsible for manual secret updates when credentials change
+- The pipeline configuration in step 10e remains the same (reference the secret name)
+
+**10c. Generate ExternalSecret YAML (skip if using direct Kubernetes secrets)**
+
+**Note:** If you created a secret directly via the Konflux UI in the alternative approach above, skip to step 10e. This step is only for the ExternalSecret/Vault approach.
 
 Create an ExternalSecret that allows Konflux to access the Vault credentials:
 
@@ -812,7 +839,9 @@ spec:
         property: password
 ```
 
-**10d. Submit ExternalSecret to konflux-release-data**
+**10d. Submit ExternalSecret to konflux-release-data (skip if using direct Kubernetes secrets)**
+
+**Note:** If you created a secret directly via the Konflux UI in the alternative approach above, skip to step 10e. This step is only for the ExternalSecret/Vault approach.
 
 ```bash
 # Navigate to konflux-release-data repository
@@ -841,19 +870,27 @@ git push origin add-<app-name>-e2e-credentials
 
 **10e. Update Pipeline to Reference Secret**
 
-Ensure the E2E pipeline references the correct secret name:
+Ensure the E2E pipeline references the correct secret name. The configuration is the same regardless of which approach you used (ExternalSecret or direct Kubernetes secret):
 
 ```yaml
 params:
   - name: e2e-credentials-secret
-    value: "<app-name>-credentials-secret"  # Must match ExternalSecret metadata.name
+    value: "<app-name>-credentials-secret"  # Must match Secret name (from ExternalSecret OR Konflux UI)
 ```
 
 **Important Notes:**
+
+**If using ExternalSecret approach (recommended):**
 - The ExternalSecret creates a Kubernetes Secret that the pipeline can consume
 - All 4 secret keys are required: e2e-user, e2e-password, e2e-hcc-env-url, e2e-stage-actual-hostname
 - The pipeline automatically mounts the secret into the test container
-- Credentials refresh every 15 minutes from Vault
+- Credentials refresh every 15 minutes from Vault automatically
+
+**If using direct Kubernetes secret (via Konflux UI):**
+- The secret name must be `<app-name>-credentials-secret` (as created in step 10b alternative approach)
+- All 4 secret keys are required: e2e-user, e2e-password, e2e-hcc-env-url, e2e-stage-actual-hostname
+- The pipeline automatically mounts the secret into the test container
+- **You are responsible for manual credential updates** - secrets do NOT auto-rotate from Vault
 
 **Step 11: Validate Pipeline Configuration**
 
@@ -913,9 +950,11 @@ tkn pipelinerun describe --filename .tekton/your-app-pull-request.yaml
 
 **CRITICAL: Follow this two-step process to avoid cryptic errors:**
 
-**Step 12a: Submit and Merge konflux-release-data PR First**
+**Step 12a: Submit and Merge konflux-release-data PR First (or Create Secret via UI)**
 
 Before updating your repository's pipeline, ensure all Kubernetes resources are deployed:
+
+**If using ExternalSecret approach (recommended):**
 
 1. Submit the konflux-release-data MR with:
    - Proxy ConfigMap (`<app-name>-dev-proxy-caddyfile.yaml`)
@@ -935,6 +974,30 @@ Before updating your repository's pipeline, ensure all Kubernetes resources are 
 
    # Verify ExternalSecret exists and created the Secret
    kubectl get externalsecret <app-name>-credentials-secret -n <namespace>
+   kubectl get secret <app-name>-credentials-secret -n <namespace>
+   ```
+
+**If using direct Kubernetes secret via Konflux UI:**
+
+1. Submit the konflux-release-data MR with:
+   - Proxy ConfigMap (`<app-name>-dev-proxy-caddyfile.yaml`)
+   - Updated `kustomization.yaml`
+   - **Note:** No ExternalSecret file needed
+
+2. Get the MR reviewed and approved by Platform Experience team
+
+3. **Wait for the MR to merge** - this is critical!
+
+4. **Wait for ConfigMap to sync to the Konflux cluster** (usually takes a few minutes after merge)
+
+5. Create the secret via Konflux UI (as described in step 10b alternative approach) with name `<app-name>-credentials-secret`
+
+6. Verify resources are available:
+   ```bash
+   # Verify ConfigMap exists
+   kubectl get configmap <app-name>-dev-proxy-caddyfile -n <namespace>
+
+   # Verify Secret exists (created via UI)
    kubectl get secret <app-name>-credentials-secret -n <namespace>
    ```
 
@@ -2009,18 +2072,23 @@ Before considering setup complete, verify:
   - [ ] Added to kustomization.yaml in tenants-config/cluster/$YOUR_CLUSTER/tenants/$TENANT_NAMESPACE/
   - [ ] Merge request submitted and approved
   - [ ] Note: app-caddy-config is no longer needed for most repositories
-- [ ] Vault credentials created for E2E tests:
-  - [ ] Credentials stored in Vault at `creds/konflux/<app-name>`
-  - [ ] username property set (mapped to e2e-user)
-  - [ ] password property set (mapped to e2e-password)
-  - [ ] e2e-hcc-env-url property set (HCC environment URL)
-  - [ ] e2e-stage-actual-hostname property set (Stage hostname)
-- [ ] ExternalSecret YAML generated and submitted to konflux-release-data:
-  - [ ] ExternalSecret YAML created with correct app name and namespace
-  - [ ] All 4 required secret keys configured (e2e-user, e2e-password, e2e-hcc-env-url, e2e-stage-actual-hostname)
-  - [ ] Added to kustomization.yaml
-  - [ ] Merge request submitted and approved
-- [ ] Pipeline references correct credentials secret name
+- [ ] E2E credentials configured (choose ONE approach):
+  - **ExternalSecret approach (recommended):**
+    - [ ] Credentials stored in Vault at `creds/konflux/<app-name>`
+    - [ ] username property set (mapped to e2e-user)
+    - [ ] password property set (mapped to e2e-password)
+    - [ ] e2e-hcc-env-url property set (HCC environment URL)
+    - [ ] e2e-stage-actual-hostname property set (Stage hostname)
+    - [ ] ExternalSecret YAML created with correct app name and namespace
+    - [ ] All 4 required secret keys configured in ExternalSecret
+    - [ ] Added to kustomization.yaml in konflux-release-data
+    - [ ] Merge request submitted and approved
+  - **OR Direct Kubernetes secret (via Konflux UI):**
+    - [ ] Secret created via Konflux UI with name `<app-name>-credentials-secret`
+    - [ ] Secret type: Opaque
+    - [ ] All 4 required secret keys added: e2e-user, e2e-password, e2e-hcc-env-url, e2e-stage-actual-hostname
+    - [ ] **Note:** Manual rotation responsibility - no auto-rotation from Vault
+- [ ] Pipeline references correct credentials secret name (`<app-name>-credentials-secret`)
 - [ ] Test PR created and pipeline executes
 - [ ] Pipeline results post back to PR
 - [ ] Tests execute successfully (or fail for legitimate test reasons, not config)
