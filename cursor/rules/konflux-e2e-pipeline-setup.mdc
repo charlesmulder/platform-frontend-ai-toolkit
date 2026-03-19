@@ -705,6 +705,10 @@ The developer needs to ensure the following credentials are stored in Vault at p
 
 **Setting up Vault credentials:**
 
+**Recommended Approach: ExternalSecrets with Vault**
+
+The recommended process is to establish external secrets using Vault, which provides centralized secret management and automatic rotation. Follow one of these options:
+
 **Option 1: If you have Vault access**
 - Access Vault and create a secret at `creds/konflux/<app-name>`
 - Add all four required properties with the appropriate credential values
@@ -738,6 +742,27 @@ If you can't update app-interface yourself, provide your platform team with:
 3. The actual credential values (test user account details)
 
 Once credentials are in Vault, they will be automatically synced to Konflux via the ExternalSecret you'll create in the next step.
+
+**Alternative Approach: Direct Kubernetes Secrets (at team's discretion)**
+
+While the ExternalSecret approach is recommended for production use, teams may optionally create Kubernetes secrets directly using the Konflux UI if that better fits their workflow:
+
+1. **Access the Konflux UI** for your namespace
+2. **Navigate to Secrets** section
+3. **Create a new secret** with the following configuration:
+   - Secret name: `<app-name>-credentials-secret`
+   - Secret type: Opaque
+   - Add the required key-value pairs:
+     - `e2e-user`: Your E2E test username
+     - `e2e-password`: Your E2E test password
+     - `e2e-hcc-env-url`: HCC environment URL
+     - `e2e-stage-actual-hostname`: Stage environment hostname
+
+**Note:** When using this approach:
+- You skip steps 10c (Generate ExternalSecret YAML) and 10d (Submit ExternalSecret to konflux-release-data)
+- Secrets created this way do NOT auto-rotate from Vault
+- You're responsible for manual secret updates when credentials change
+- The pipeline configuration in step 10e remains the same (reference the secret name)
 
 **10c. Generate ExternalSecret YAML**
 
