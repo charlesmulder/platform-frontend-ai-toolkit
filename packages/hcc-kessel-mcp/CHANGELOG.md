@@ -1,3 +1,7 @@
+## 0.2.4 (2026-04-21)
+
+This was a version bump only for @redhat-cloud-services/hcc-kessel-mcp to align it with other projects, there were no code changes.
+
 ## 0.2.3 (2026-04-20)
 
 This was a version bump only for @redhat-cloud-services/hcc-kessel-mcp to align it with other projects, there were no code changes.
