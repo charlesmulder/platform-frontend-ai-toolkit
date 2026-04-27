@@ -56,7 +56,7 @@ When encountering tests that require multiple users, you MUST:
 
 1. **Identify the test** as requiring multiple users
 2. **Warn the user** explicitly:
-   ```
+   ```text
    ⚠️ WARNING: This test uses multiple user accounts (admin + regular user).
 
    The migration agent only supports single-user authentication. This test
@@ -202,7 +202,7 @@ When you encounter tests that:
 **You MUST:**
 1. **STOP the conversion**
 2. **Warn the user:**
-   ```
+   ```text
    ⚠️ AUTH STATE MODIFICATION DETECTED
 
    Test: test_logout()
@@ -229,7 +229,7 @@ When you encounter tests that:
 
 Ask user for path to `insights-chrome` or similar repo with isolated auth examples:
 
-```
+```text
 To implement isolated authentication, I need to reference the pattern used
 in insights-chrome. Can you provide the path to:
 1. insights-chrome repository (for auth fixture examples)
@@ -418,7 +418,7 @@ When you identify a test with state assumptions:
 1. **STOP the conversion**
 2. **Warn the user explicitly:**
 
-```
+```text
 ⚠️ ENVIRONMENT STATE ASSUMPTION DETECTED
 
 Test: test_filter_systems()
@@ -859,7 +859,7 @@ test('user is logged in', async ({ page }) => {
      - Similar test names or descriptions
 
    **If overlap is found, ask the user:**
-   ```
+   ```text
    ⚠️ EXISTING TEST COVERAGE DETECTED
 
    IQE Test: test_inventory_filter()
@@ -886,7 +886,7 @@ test('user is logged in', async ({ page }) => {
 
 6. **Create Migration Plan**
    - Present a comprehensive plan organized by target repository:
-     ```
+     ```text
      Migration Plan for test_navigation.py:
 
      Tests to Convert (5):
@@ -934,7 +934,7 @@ test('user is logged in', async ({ page }) => {
 
 **Create separate directory structures for each target repository:**
 
-```
+```text
 converted-tests/
 ├── insights-chrome/
 │   ├── playwright.config.ts
@@ -1385,7 +1385,7 @@ test.describe('Non-beta environment', () => {
 
 When encountering parametrized tests with 3-5 values, ask the user:
 
-```
+```text
 I found a parametrized test with 4 test cases. Should I:
 1. Create 4 separate test() calls (clearer, more verbose)
 2. Use a for loop with test data array (concise, scalable)
@@ -1400,7 +1400,7 @@ For EACH converted test, generate a test step documentation file that QE can use
 **CRITICAL:** Documentation files should be placed in the destination repository structure, not in a separate location.
 
 **Documentation Location Pattern:**
-```
+```text
 <target-repo>/
 ├── playwright/
 │   └── tests/
@@ -1503,7 +1503,7 @@ Migrated X tests from `iqe-platform-ui-plugin` to Playwright across Y frontend r
 - ✅ help-menu.spec.ts (2 tests)
 
 **Files Generated:**
-```
+```text
 insights-chrome/
 ├── playwright.config.ts (or updates to existing config)
 ├── playwright/
@@ -1569,7 +1569,7 @@ Each repository needs:
 
 After creating the summary, offer to help with actual transplantation:
 
-```
+```text
 Migration complete! I've converted X tests for Y repositories.
 
 Would you like me to help transplant these files to the destination repositories?
@@ -1608,7 +1608,7 @@ When user provides repository path:
    - Identify existing test patterns to match
 
 3. **Ask for Confirmation:**
-   ```
+   ```text
    Repository verified: insights-chrome
    Current branch: main
 
@@ -1766,7 +1766,7 @@ For each major+ comment:
 
 After addressing all major+ comments:
 
-```
+```text
 ✅ CodeRabbit Comment Resolution Complete
 
 Addressed 3 major priority comments:
