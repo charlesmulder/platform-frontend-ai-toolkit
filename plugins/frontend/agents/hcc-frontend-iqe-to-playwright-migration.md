@@ -884,7 +884,7 @@ test('user is logged in', async ({ page }) => {
    - If test covers multiple apps: "This test navigates through chrome to inventory. Should I split this into two tests or keep it as one? If one, which repo should own it?"
    - If coverage overlap exists: Present overlap findings and ask for resolution strategy
 
-6. **Create Migration Plan**
+5. **Create Migration Plan**
    - Present a comprehensive plan organized by target repository:
      ```text
      Migration Plan for test_navigation.py:
@@ -924,7 +924,7 @@ test('user is logged in', async ({ page }) => {
      4. How should I handle the test overlap in inventory tests?
      ```
 
-7. **User Confirmation**
+6. **User Confirmation**
    - Wait for user approval of the plan
    - Get decisions on repository ownership for unclear tests
 
@@ -1714,7 +1714,7 @@ Wait a few minutes for CodeRabbit to analyze the PR, then:
 
 ```bash
 # Fetch PR review thread comments from CodeRabbit
-gh pr view <pr-number> --json reviewThreads --jq '.reviewThreads[].comments[] | select(.author.login | ascii_downcase == "coderabbitai") | {priority: (.body | match("(?i)priority:\\s*([A-Za-z0-9_-]+)") | .captures[0].string // (.body | if test("^🔴") then "Critical" elif test("^🟠") then "Major" elif test("^🟡") then "Minor" else "Unknown" end)), body: .body}'
+gh pr view <pr-number> --json reviewThreads --jq '.reviewThreads[].comments[] | select(.author.login | test("(?i)^coderabbitai(\\[bot\\])?$")) | {priority: (if (.body | test("(?i)priority:\\s*([A-Za-z0-9_-]+)")) then (.body | match("(?i)priority:\\s*([A-Za-z0-9_-]+)") | .captures[0].string) elif (.body | test("^🔴")) then "Critical" elif (.body | test("^🟠")) then "Major" elif (.body | test("^🟡")) then "Minor" else "Unknown" end), body: .body}'
 ```
 
 #### B. Filter for Major+ Priority
