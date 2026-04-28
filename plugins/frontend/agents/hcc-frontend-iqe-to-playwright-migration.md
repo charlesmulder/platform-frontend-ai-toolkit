@@ -329,7 +329,7 @@ Before finalizing conversion, verify:
 ### Warning Message
 
 If duplicate authentication is detected:
-```
+```text
 ⚠️ DUPLICATE AUTHENTICATION DETECTED
 
 Test: test_dashboard_access()
@@ -1686,7 +1686,7 @@ When user provides repository path:
    ```
 
 6. **Report Results:**
-   ```
+   ```text
    ✅ Transplantation complete!
 
    Branch created: feat/migrate-iqe-tests-chrome-components
@@ -1745,9 +1745,7 @@ For each major+ comment:
    git add .
    git commit -m "fix: address CodeRabbit feedback - <brief description>
 
-   Resolves CodeRabbit comment about <issue>
-
-   Co-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>"
+   Resolves CodeRabbit comment about <issue>"
 
    git push
    ```
