@@ -8,29 +8,25 @@ The platform-frontend-ai-toolkit is a centralized monorepo that distributes AI d
                           platform-frontend-ai-toolkit
                           ┌─────────────────────────┐
                           │                         │
-                    ┌─────┤  claude/agents/*.md      │
-                    │     │  (source of truth)       │
-                    │     │                         │
-                    │     │  ┌───────────────────┐  │
-                    │     │  │ convert-to-cursor  │  │
-                    │     │  └────────┬──────────┘  │
-                    │     │           │              │
-                    │     │  cursor/rules/*.mdc      │
-                    │     │  (auto-generated)        │
-                    │     │                         │
-                    │     │  packages/               │
-                    │     │  ├── hcc-pf-mcp          │
-                    │     │  ├── hcc-feo-mcp         │
-                    │     │  └── hcc-kessel-mcp      │
-                    │     └─────────────────────────┘
-                    │
-        ┌───────────┼───────────────────┐
-        │           │                   │
-   Claude Code    Cursor           npm registry
-   (plugin)     (.mdc rules)    (@redhat-cloud-services/*)
-        │           │                   │
-   Users install  Users copy       Users run via
-   via marketplace to .cursor/      npx or MCP config
+                          │  plugins/               │
+                          │  ├── frontend/          │
+                          │  ├── infrastructure/    │
+                          │  └── management/        │
+                          │     (agents/*.md)        │
+                          │                         │
+                          │  packages/               │
+                          │  ├── hcc-pf-mcp          │
+                          │  ├── hcc-feo-mcp         │
+                          │  └── hcc-kessel-mcp      │
+                          └─────────────────────────┘
+                                      │
+                          ┌───────────┴───────────┐
+                          │                       │
+                     Claude Code            npm registry
+                   (3 plugins)        (@redhat-cloud-services/*)
+                          │                       │
+                  Users install via          Users run via
+                   marketplace              npx or MCP config
 ```
 
 ## Nx Monorepo Architecture
@@ -88,16 +84,32 @@ Two-level plugin structure:
    - Registered by users via `/plugin marketplace add RedHatInsights/platform-frontend-ai-toolkit`
    - Points to plugin source in `./claude` subdirectory
 
-2. **Plugin** (`claude/.claude-plugin/plugin.json`):
-   - Defines plugin name, version, and MCP servers
-   - MCP servers use published npm packages (`npx @redhat-cloud-services/hcc-pf-mcp`)
-   - Agent files in `claude/agents/` are automatically discovered
+2. **Plugins** (3 specialized plugins in `plugins/` directory):
+   - Each has `.claude-plugin/plugin.json` with name, version, description
+   - Each has `package.json` (private) for NX versioning
+   - Agent files in `agents/` subdirectory are automatically discovered
 
 ### Version Management
 
-- **Plugin version** (`plugin.json`): Manual bump — controls when users receive agent updates
-- **MCP package versions** (`packages/*/package.json`): Automated via Nx Release + conventional commits
-- **Marketplace version** (`marketplace.json`): Updated periodically to match plugin
+**All versioning is now automated via CI/CD:**
+
+- **Plugin version** (`plugin.json`): Automated via NX Release
+  - NX versions `package.json` files in each plugin (private, not published)
+  - Post-version hook syncs to `plugin.json` and `marketplace.json`
+  - Uses conventional commits to determine bump type
+  - Creates `{plugin-name}@{version}` git tags
+
+- **MCP package versions** (`packages/*/package.json`): Automated via Nx Release
+  - Independent versioning per package
+  - Uses conventional commits to determine bump type
+  - Creates `{package-name}@{version}` git tags
+  - Publishes to npm with provenance
+
+**Conventional Commit Rules:**
+- `fix:` → patch bump (1.0.0 → 1.0.1)
+- `feat:` → minor bump (1.0.0 → 1.1.0)
+- `feat!:` or `BREAKING CHANGE:` → major bump (1.0.0 → 2.0.0)
+- `docs:`, `chore:`, `refactor:` → no version bump
 
 ## CI/CD Pipeline
 
@@ -106,18 +118,11 @@ Two-level plugin structure:
 ```text
 PR opened/updated
     │
-    ├── ci.yml
-    │   ├── npm ci
-    │   ├── nx run-many -t build
-    │   ├── nx run-many -t lint
-    │   ├── nx run-many -t test
-    │   └── npm run check-cursor-sync
-    │
-    └── cursor-sync-check.yml (if agent/cursor files changed)
-        ├── Delete all .mdc files
-        ├── Regenerate from Claude agents
-        ├── git diff → fail if changes
-        └── Count check → agent count == rule count
+    └── ci.yml
+        ├── npm ci
+        ├── nx run-many -t build
+        ├── nx run-many -t lint
+        └── nx run-many -t test
 ```
 
 ### Release Pipeline
@@ -128,44 +133,42 @@ Push to master
     └── release.yml
         ├── npm ci
         ├── nx run-many -t build
-        └── nx release -y
+        │
+        └── nx release -y (all projects: plugins + packages)
             ├── Conventional commit analysis
-            ├── Version bump (per-package, independent)
+            ├── Version bump (independent per-project)
+            ├── Plugins: version package.json (private)
+            ├── Post-version: sync package.json → plugin.json
             ├── CHANGELOG.md update
-            ├── Git tag + commit
+            ├── Git tags: {project-name}@{version}
             ├── GitHub Release creation
-            └── npm publish (with provenance)
+            └── NPM publish (packages only, plugins are private)
 ```
 
-Release uses `NPM_CONFIG_PROVENANCE=true` for npm package signing.
+**Key Features:**
+- Plugin and package releases are **independent** and **automated**
+- Conventional commits control version bumping for both
+- Plugin tags: `{plugin-name}@{version}`, Package tags: `{package-name}@{version}`
+- NPM publishing uses `NPM_CONFIG_PROVENANCE=true` for package signing
 
-### Pre-push Hook
+## Version Sync
 
-Husky runs `npm run check-cursor-sync` before every push. This prevents accidentally pushing Claude agent changes without the corresponding Cursor rule updates.
+The `scripts/sync-plugin-versions.js` script ensures plugin.json versions stay in sync with package.json:
 
-## Agent → Cursor Conversion
-
-The `scripts/convert-to-cursor.js` script transforms Claude agent Markdown files into Cursor `.mdc` rule files:
-
-1. Reads all `claude/agents/hcc-frontend-*.md` and `claude/agents/hcc-infra-*.md` files
-2. Parses YAML frontmatter (`description`, `capabilities`)
-3. Converts to Cursor MDC format (different frontmatter schema)
-4. Strips `hcc-frontend-` / `hcc-infra-` prefixes from output filenames
-5. Writes to `cursor/rules/`
-
-The `scripts/check-cursor-sync.js` script validates:
-- Every Claude agent has a corresponding Cursor rule
-- Rule content matches what the converter would produce
-- No orphaned Cursor rules exist
+1. Runs as NX post-version hook after versioning
+2. Reads version from each `plugins/*/package.json`
+3. Updates corresponding `plugins/*/.claude-plugin/plugin.json`
+4. Updates `.claude-plugin/marketplace.json` for all plugins
+5. Committed automatically as part of NX Release
 
 ## Adding New Capabilities
 
 ### New Agent Checklist
 
-1. Create `claude/agents/hcc-frontend-<name>.md` with frontmatter
-2. Run `npm run convert-cursor`
-3. Bump version in `claude/.claude-plugin/plugin.json`
-4. Commit both `.md` and `.mdc` files
+1. Create `plugins/{plugin-name}/agents/hcc-frontend-<name>.md` with frontmatter
+2. Test the agent locally with Claude Code
+3. Commit with conventional commit format (`feat(agent-name): description`)
+4. Version bump happens automatically on merge to master
 5. Update README.md agent catalog if significant
 
 ### New MCP Server Checklist

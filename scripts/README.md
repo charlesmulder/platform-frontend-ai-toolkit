@@ -4,57 +4,65 @@ This directory contains automation scripts for the HCC Frontend AI Toolkit.
 
 ## Available Scripts
 
-### `convert-to-cursor.js`
-**Purpose:** Converts Claude agents to Cursor .mdc format
+### `sync-plugin-versions.js`
+**Purpose:** Synchronize plugin manifests after NX Release updates package versions
 
 **Usage:**
 ```bash
-npm run convert-cursor
+npm run sync-plugin-versions
 # or
-node scripts/convert-to-cursor.js
+node scripts/sync-plugin-versions.js
 ```
 
 **What it does:**
-- Reads all Claude agent files from `claude/agents/`
-- Converts YAML frontmatter to Cursor format
-- Maps agent types to appropriate file globs
-- Outputs `.mdc` files to `cursor/rules/`
-
-### `check-cursor-sync.js`
-**Purpose:** Verifies that Cursor rules are in sync with Claude agents
-
-**Usage:**
-```bash
-npm run check-cursor-sync
-# or
-node scripts/check-cursor-sync.js
-```
-
-**What it does:**
-- Removes existing cursor rules
-- Regenerates rules from Claude agents
-- Checks for git differences
-- Validates agent count matches
-- Exits with error if out of sync
+- Reads versions from `plugins/*/package.json`
+- Updates corresponding `plugins/*/.claude-plugin/plugin.json`
+- Updates version in `.claude-plugin/marketplace.json`
+- Intended as NX Release post-version sync step
 
 **Used in:**
-- CI/CD pipeline (PR checks)
-- Husky pre-commit hooks (automatic)
-- Local development verification
+- NX Release workflow (automated via post-version hook)
+- Ensures plugin.json stays in sync with package.json versions
+
+**Conventional commit analysis (handled by NX Release):**
+- `fix:` → patch bump (1.0.0 → 1.0.1)
+- `feat:` → minor bump (1.0.0 → 1.1.0)
+- `feat!:` or `BREAKING CHANGE:` → major bump (1.0.0 → 2.0.0)
 
 ## Development Workflow
 
-When modifying Claude agents:
+### Adding/Modifying Agents
 
-1. **Edit** Claude agent files in `claude/agents/`
-2. **Convert** to Cursor format: `npm run convert-cursor`
-3. **Verify** sync: `npm run check-cursor-sync`
-4. **Commit** both Claude and Cursor files
+1. **Edit** agent files in `plugins/{plugin-name}/agents/`
+2. **Test** the agent locally with Claude Code
+3. **Commit** with conventional commit message:
+   ```bash
+   git add plugins/frontend/agents/my-agent.md
+   git commit -m "feat(my-agent): add new agent for X"
+   ```
+4. **Push** to branch and create PR
+5. **Merge** to master → NX Release triggers
+6. **Plugin version auto-bumps** based on your commit message
+
+### Validating Commits Locally
+
+To check your commit follows conventional format:
+
+```bash
+# View your last commit message
+git log -1 --pretty=%B
+```
+
+Ensure it matches the pattern: `type(scope): description` where type is `feat`, `fix`, or includes `BREAKING CHANGE`.
 
 ## CI Integration
 
-Both scripts are integrated into our development pipeline:
-- **Husky pre-commit hooks** prevent committing out-of-sync rules
-- **PR checks** ensure Cursor rules stay in sync
-- **Release workflow** uses converted rules for distribution
-- **Quality gates** prevent out-of-sync deployments
+Scripts are integrated into the development pipeline:
+
+### PR Checks
+- Build, lint, and test all packages via CI
+
+### Release Workflow (master merge)
+- **NX Release:** Versions all projects (plugins + MCP packages) based on conventional commits
+- **sync-plugin-versions:** Post-version hook syncs package.json → plugin.json & marketplace.json
+- Creates GitHub releases and npm packages (packages only, plugins are private)

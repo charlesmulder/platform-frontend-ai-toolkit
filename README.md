@@ -4,24 +4,39 @@ A custom Claude Code marketplace and plugin repository for frontend development 
 
 ## What is this?
 
-This repository serves as both:
-1. A **Claude Code plugin** containing custom agents and MCP servers for frontend development
-2. A **custom plugin marketplace** for your team's agent distribution
+This repository serves as a **custom Claude Code marketplace** providing specialized plugins for different workflows:
 
-This approach allows your team to have a centralized location for all frontend development agents, MCP servers, and easily distribute them across the team.
+1. **Frontend Plugin** - Development tools for React, TypeScript, testing, and code quality
+2. **Infrastructure Plugin** - DevOps automation for Konflux, database upgrades, and secrets management
+3. **Management Plugin** - Project management tools for JIRA, reporting, and analytics
+
+Each plugin contains custom agents and MCP servers tailored for specific use cases, allowing teams to install only what they need.
 
 ## Getting Started
 
 ### 🤖 Claude Code Setup
 
-#### Install the Plugin
+#### Install Plugins
 
 ```bash
 # 1. Add this repository as a marketplace
 /plugin marketplace add RedHatInsights/platform-frontend-ai-toolkit
 
-# 2. Install the plugin from the marketplace
-/plugin install hcc-frontend-ai-toolkit@hcc-frontend-toolkit
+# 2. Install the plugins you need:
+
+# For frontend development (React, TypeScript, testing)
+/plugin install frontend-plugin@hcc-frontend-toolkit
+
+# For infrastructure/DevOps (Konflux, DB upgrades, secrets)
+/plugin install infrastructure-plugin@hcc-frontend-toolkit
+
+# For project management (JIRA, reporting, analytics)
+/plugin install management-plugin@hcc-frontend-toolkit
+```
+
+**Install all three:**
+```bash
+/plugin install frontend-plugin infrastructure-plugin management-plugin@hcc-frontend-toolkit
 ```
 
 📖 For more details on Claude Code plugins, see the [official plugin guide](https://code.claude.com/docs/en/plugins#install-and-manage-plugins).
@@ -57,58 +72,6 @@ Task with subagent_type='hcc-frontend-hello-world' to greet the user
 ```
 
 The hello world agent should identify itself as part of the HCC Frontend AI Toolkit plugin, confirming successful installation.
-
-### 🖱️ Cursor Setup
-
-This repository contains **Agents** (Rules) and **Tools** (MCPs) configured specifically for our team's workflows.
-
-#### Option A: Install Script (Recommended)
-
-Download and run the install script in the root of **your** project:
-
-```bash
-curl -sSL https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/install-cursor.sh | bash
-```
-
-#### Option B: Manual One-Liner
-
-Run this command in the root of **your** project (the app you are working on, not this repo) to download the latest agents:
-
-```bash
-# Creates .cursor/rules and downloads our team agents
-mkdir -p .cursor/rules && \
-curl -o .cursor/rules/hello-world.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/hello-world.mdc && \
-curl -o .cursor/rules/patternfly-component-builder.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/patternfly-component-builder.mdc && \
-curl -o .cursor/rules/patternfly-dataview-specialist.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/patternfly-dataview-specialist.mdc && \
-curl -o .cursor/rules/storybook-specialist.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/storybook-specialist.mdc && \
-curl -o .cursor/rules/typescript-type-refiner.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/typescript-type-refiner.mdc && \
-curl -o .cursor/rules/unit-test-writer.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/unit-test-writer.mdc && \
-curl -o .cursor/rules/weekly-report.mdc https://raw.githubusercontent.com/RedHatInsights/platform-frontend-ai-toolkit/master/cursor/rules/weekly-report.mdc
-```
-
-*Restart Cursor after running this.*
-
-#### Option C: Manual Setup
-
-**1. Installing Agents (Rules)**
-
-1.  Navigate to your project's root folder.
-2.  Create a folder named `.cursor/rules/`.
-3.  Copy the `.mdc` files from `cursor/rules/` in this repo into that folder.
-4.  **Verify:** Open Cursor, type `Cmd+K` (or `Ctrl+K`), and you should see the agents appear in the context menu.
-
-**2. Connecting Tools (MCPs)**
-
-1.  Open Cursor Settings (`Cmd/Ctrl + ,`).
-2.  Navigate to **General \> MCP**.
-3.  Locate `cursor/mcp-template.json` in this repo.
-4.  Copy the configuration for the tools you need and click **"Add new MCP server"** in Cursor.
-5.  **Note:** The MCP server will automatically use the published NPM package `@redhat-cloud-services/hcc-pf-mcp`.
-
-#### How to Use Cursor
-
-  * **Chat:** Tag an agent by typing `@patternfly-component-builder` or `@typescript-type-refiner` in the chat window.
-  * **Composer:** In Composer (`Cmd+I`), the agents will automatically activate based on the file types you are editing (e.g., TypeScript files will auto-activate the type refiner).
 
 ## Agent Development
 
@@ -510,34 +473,45 @@ This document tracks:
 
 ## Repository Structure
 
-This repository is organized to support multiple agenic configurations:
-
 ```
-platform-frontend-ai-toolkit/           # Repository root
+platform-frontend-ai-toolkit/
 ├── .claude-plugin/
-│   └── marketplace.json                 # Marketplace configuration (root level)
-├── claude/                              # Claude Code plugin subdirectory
-│   ├── .claude-plugin/
-│   │   └── plugin.json                  # Plugin manifest
-│   └── agents/                          # Agent definitions
-│       └── hcc-frontend-hello-world.md
-├── cursor/                              # Cursor editor support
-│   ├── rules/                           # Converted .mdc files
-│   └── mcp-template.json               # MCP server configuration template
-├── packages/
-│   └── hcc-pf-mcp/                     # MCP server package
-├── scripts/                             # Automation scripts
-│   ├── convert-to-cursor.js            # Claude -> Cursor conversion
-│   └── check-cursor-sync.js            # Sync validation
-├── AGENT_GUIDELINES.md                  # Agent development guidelines
-├── LICENSE
-└── README.md                           # This file
+│   └── marketplace.json              # Marketplace config (lists all plugins)
+├── plugins/                          # Claude Code plugins
+│   ├── frontend/                     # Frontend development plugin
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json
+│   │   ├── agents/                   # 14 frontend development agents
+│   │   ├── package.json              # For NX versioning (private)
+│   │   └── project.json              # NX project config
+│   ├── infrastructure/               # Infrastructure & DevOps plugin
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json
+│   │   ├── agents/                   # 13 infrastructure agents
+│   │   ├── skills/                   # Utility skills (db-upgrader)
+│   │   ├── package.json
+│   │   └── project.json
+│   └── management/                   # Project management plugin
+│       ├── .claude-plugin/
+│       │   └── plugin.json
+│       ├── agents/                   # 3 management agents
+│       ├── package.json
+│       └── project.json
+├── packages/                         # MCP servers (npm packages)
+│   ├── hcc-pf-mcp/                  # PatternFly documentation MCP
+│   ├── hcc-feo-mcp/                 # FEO configuration MCP
+│   └── hcc-kessel-mcp/              # Kessel permissions MCP
+├── scripts/
+│   └── sync-plugin-versions.js      # Sync package.json → plugin.json
+├── docs/                            # Documentation
+├── nx.json                          # NX workspace config
+└── README.md
 ```
 
-This structure allows you to:
-- Add other agenic configurations in separate subdirectories (e.g., `openai/`, `anthropic/`, etc.)
-- Keep the marketplace configuration at the root level
-- Organize different AI toolkits by subdirectory
+**Key features:**
+- **Modular plugins:** Install only what you need (frontend, infrastructure, or management)
+- **Automated versioning:** NX Release manages plugin and MCP package versions
+- **Centralized distribution:** One marketplace, multiple specialized plugins
 
 ## Updating the Plugin
 
@@ -551,16 +525,18 @@ claude plugins list
 claude plugins status
 ```
 
-### Update the Plugin
+### Update Plugins
 
 ```bash
 # Update the marketplace to get latest plugin versions
 /plugin marketplace update hcc-frontend-toolkit
 
-# Then update the plugin (via CLI interface or manually)
-/plugin install hcc-frontend-ai-toolkit@hcc-frontend-toolkit
+# Then update specific plugins:
+/plugin install frontend-plugin@hcc-frontend-toolkit
+/plugin install infrastructure-plugin@hcc-frontend-toolkit
+/plugin install management-plugin@hcc-frontend-toolkit
 
-# Or update all plugins
+# Or update all installed plugins
 claude plugins update
 ```
 
@@ -569,11 +545,11 @@ claude plugins update
 If automatic updates don't work:
 
 ```bash
-# Uninstall current version
-claude plugins uninstall hcc-frontend-ai-toolkit
+# Uninstall current versions
+claude plugins uninstall frontend-plugin infrastructure-plugin management-plugin
 
-# Reinstall latest version
-claude plugins install github:your-org/platform-frontend-ai-toolkit
+# Reinstall latest versions
+/plugin install frontend-plugin infrastructure-plugin management-plugin@hcc-frontend-toolkit
 ```
 
 ## Contributing
@@ -581,42 +557,95 @@ claude plugins install github:your-org/platform-frontend-ai-toolkit
 ### Adding or Updating Agents
 
 1. **Follow naming convention** with `hcc-frontend-` prefix
-2. **Place agent files** in the `claude/agents/` directory
+2. **Place agent files** in the appropriate plugin directory:
+   - Frontend agents → `plugins/frontend/agents/`
+   - Infrastructure agents → `plugins/infrastructure/agents/`
+   - Management agents → `plugins/management/agents/`
 3. **Include proper frontmatter** with description and capabilities
-4. **Regenerate Cursor rules** after making changes:
-   ```bash
-   npm run convert-cursor
-   ```
-5. **Verify sync** before committing:
-   ```bash
-   npm run check-cursor-sync
-   ```
-6. **Test agents** before submitting pull requests
-7. **Update plugin version** in `plugin.json` for releases
+4. **Test agents** before submitting pull requests
+5. **Use conventional commits** for your changes (see Automated Release below)
+
+**Note:** Plugin versions are automatically managed by NX Release - no manual bumping required!
+
+### Automated Release Workflow
+
+This repository uses **automated versioning** for both Claude plugins and MCP npm packages.
+
+#### How It Works
+
+When changes are merged to `master`:
+
+1. **Plugin Versioning** (for `plugins/*/agents/` changes):
+   - NX detects changes in plugin directories
+   - Analyzes conventional commit messages to determine version bump type
+   - Updates `package.json` versions for plugins
+   - Syncs versions to `plugin.json` and `marketplace.json` via post-version hook
+   - Creates git tags and GitHub releases
+
+2. **NPM Package Versioning** (for `packages/` changes):
+   - NX Release with conventional commits
+   - Independently versions each MCP package
+   - Publishes to npm registry with provenance
+   - Creates GitHub releases for each package
+
+#### Commit Message Format
+
+Use **conventional commits** to control version bumping:
+
+```bash
+# Patch version bump (1.0.0 → 1.0.1)
+fix(agent-name): fix bug in agent logic
+
+# Minor version bump (1.0.0 → 1.1.0)  
+feat(agent-name): add new agent for TypeScript migration
+
+# Major version bump (1.0.0 → 2.0.0)
+feat(agent-name)!: redesign agent interface
+
+# Or with BREAKING CHANGE footer
+feat(agent-name): change agent behavior
+
+BREAKING CHANGE: This changes how the agent processes input
+```
+
+#### Version Bump Rules
+
+| Change Type | Commit Prefix | Version Bump | Example |
+|-------------|--------------|--------------|---------|
+| Bug fixes | `fix:` | Patch | 1.0.0 → 1.0.1 |
+| New features/agents | `feat:` | Minor | 1.0.0 → 1.1.0 |
+| Breaking changes | `feat!:` or `BREAKING CHANGE:` | Major | 1.0.0 → 2.0.0 |
+| Docs, refactor, chore | `docs:`, `refactor:`, `chore:` | No bump | - |
+
+#### Testing the Release Workflow
+
+To test plugin versioning locally:
+
+```bash
+# Check what version bump would be applied
+npm run bump-plugin-version
+
+# The script will:
+# - Analyze commits since last plugin release
+# - Determine version bump type
+# - Show what the new version would be
+# - Update plugin.json and marketplace.json
+```
+
+**Note:** Versions are managed automatically by NX Release on merge to master.
 
 ### CI Integration
 
-#### CI Check:
-- **Triggers on:** PRs that modify `claude/agents/`, `cursor/rules/`, or conversion scripts
-- **Validates:** Cursor rules match Claude agents exactly
-- **Fails if:** Rules are out of sync or conversion script produces different output
+**Continuous Integration (.github/workflows/ci.yml):**
+- Triggers on all PRs and master pushes
+- Runs: build, lint, test for all packages
+- Validates code quality before merge
 
-#### Local Development:
-```bash
-# Check if rules are in sync
-npm run check-cursor-sync
-
-# Fix sync issues
-npm run convert-cursor
-
-# Pre-commit hook runs automatically via Husky
-git commit -m "feat: update agent" # Will run sync check
-```
-
-#### Pre-commit Protection:
-- **Husky pre-commit hook** automatically runs `npm run check-cursor-sync`
-- **Commits will fail** if Cursor rules are out of sync
-- **Fix by running** `npm run convert-cursor` before committing
+**Release Workflow (.github/workflows/release.yml):**
+- Triggers on master push
+- Runs NX Release for plugins and MCP packages
+- Uses conventional commits to determine version bumps
+- Publishes to npm and creates GitHub releases
 
 ## Troubleshooting
 
@@ -636,8 +665,10 @@ claude plugins list --verbose
 # Check agent availability
 claude agents list
 
-# Verify plugin is loaded
-claude plugins status hcc-frontend-ai-toolkit
+# Verify plugins are loaded
+claude plugins status frontend-plugin
+claude plugins status infrastructure-plugin
+claude plugins status management-plugin
 ```
 
 **Permission errors:**

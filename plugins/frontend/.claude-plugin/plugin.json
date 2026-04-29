@@ -1,0 +1,13 @@
+{
+  "name": "frontend-plugin",
+  "version": "1.0.0",
+  "description": "Claude Code plugin for frontend development workflows - TypeScript, React, testing, and code quality",
+  "author": {
+    "name": "HCC Frontend Team",
+    "email": "frontend-team@hcc.com"
+  },
+  "homepage": "https://github.com/RedHatInsights/platform-frontend-ai-toolkit",
+  "repository": "https://github.com/RedHatInsights/platform-frontend-ai-toolkit",
+  "license": "Apache-2.0",
+  "keywords": ["frontend", "react", "typescript", "testing", "development"]
+}

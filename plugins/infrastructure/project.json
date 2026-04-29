@@ -1,0 +1,12 @@
+{
+  "name": "infrastructure-plugin",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "plugins/infrastructure",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:noop",
+      "outputs": []
+    }
+  }
+}

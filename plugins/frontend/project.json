@@ -1,0 +1,12 @@
+{
+  "name": "frontend-plugin",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "plugins/frontend",
+  "projectType": "library",
+  "targets": {
+    "build": {
+      "executor": "nx:noop",
+      "outputs": []
+    }
+  }
+}

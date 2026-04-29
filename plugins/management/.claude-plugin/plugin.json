@@ -1,0 +1,13 @@
+{
+  "name": "management-plugin",
+  "version": "1.0.0",
+  "description": "Claude Code plugin for project management and reporting workflows - JIRA, weekly reports, analytics investigation",
+  "author": {
+    "name": "HCC Frontend Team",
+    "email": "frontend-team@hcc.com"
+  },
+  "homepage": "https://github.com/RedHatInsights/platform-frontend-ai-toolkit",
+  "repository": "https://github.com/RedHatInsights/platform-frontend-ai-toolkit",
+  "license": "Apache-2.0",
+  "keywords": ["management", "jira", "reporting", "analytics"]
+}

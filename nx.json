@@ -54,7 +54,10 @@
     "projects": [
       "@redhat-cloud-services/hcc-pf-mcp",
       "@redhat-cloud-services/hcc-feo-mcp",
-      "@redhat-cloud-services/hcc-kessel-mcp"
+      "@redhat-cloud-services/hcc-kessel-mcp",
+      "frontend-plugin",
+      "infrastructure-plugin",
+      "management-plugin"
     ],
     "changelog": {
       "projectChangelogs": {
@@ -64,7 +67,8 @@
     "projectsRelationship": "independent",
     "version": {
       "conventionalCommits": true,
-      "preVersionCommand": "nx run-many -t build"
+      "preVersionCommand": "nx run-many -t build",
+      "postVersionCommand": "npm run sync-plugin-versions"
     },
     "git": {
       "commit": true,
