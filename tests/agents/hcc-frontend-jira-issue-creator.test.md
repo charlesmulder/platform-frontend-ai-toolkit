@@ -14,7 +14,7 @@ Paste this prompt into a Claude Code session from the root of this repository:
 ```text
 Run the agent test suite for hcc-frontend-jira-issue-creator. Test cases are in tests/agents/hcc-frontend-jira-issue-creator.test.md in this repository.
 
-Run all 6 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-frontend-jira-issue-creator. Report pass/fail per expected field for each test.
+Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-frontend-jira-issue-creator. Report pass/fail per expected field for each test.
 ```
 
 ---
@@ -119,3 +119,57 @@ Run all 6 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 |-------|-------|
 | Security Level | not set |
 | Response format | full field preview |
+
+---
+
+## T7 — Minimal framework prompt, no repo or bot mention
+
+**Prompt:**
+> Dry run: Create an unassigned framework ticket to update docs. Show all fields.
+
+**Expected:**
+
+| Field | Value |
+|-------|-------|
+| Labels | `platform-experience-services` |
+| Must NOT contain | `hcc-ai-framework`, any `repo:` label, `hcc-frontend`, `console-framework`, `platform-services`, `docs`, `documentation` |
+| Assignee | none |
+| Activity Type | Future Sustainability |
+| Team | Console - Framework |
+| Security Level | not set |
+
+---
+
+## T8 — Prompt with technology names that are not labels
+
+**Prompt:**
+> Dry run: Create a framework ticket to migrate React Router to TanStack Router and upgrade PatternFly. Unassigned. Show all fields.
+
+**Expected:**
+
+| Field | Value |
+|-------|-------|
+| Labels | `platform-experience-services` |
+| Must NOT contain | `react-router`, `tanstack-router`, `tanstack`, `patternfly`, `migration`, `hcc-frontend`, `console-framework`, `platform-services`, any `repo:` label, `hcc-ai-framework` |
+| Assignee | none |
+| Activity Type | Future Sustainability |
+| Team | Console - Framework |
+| Security Level | not set |
+
+---
+
+## T9 — Project RHCLOUD used without asking
+
+**Prompt:**
+> Dry run: Create an unassigned framework bug ticket — Chrome sidebar crashes on page reload. Show all fields.
+
+**Expected:**
+
+| Field | Value |
+|-------|-------|
+| Project | `RHCLOUD` |
+| Agent behavior | does NOT ask which project to use |
+| Labels | `platform-experience-services` |
+| Activity Type | Quality / Stability / Reliability |
+| Team | Console - Framework |
+| Security Level | not set |
