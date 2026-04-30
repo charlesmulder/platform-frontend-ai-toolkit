@@ -1,6 +1,6 @@
 ---
 name: hcc-frontend-jira-issue-creator
-description: Creates JIRA issues for HCC Frontend teams with proper team identification via components and labels. Supports dry run mode for previewing issues before creation. Can be configured with predefined values or accepts them via request.
+description: Creates JIRA issues for HCC Frontend teams with proper team identification via Team field and labels. Supports dry run mode for previewing issues before creation. Can be configured with predefined values or accepts them via request.
 capabilities: ["jira-integration", "issue-creation", "team-identification", "project-management", "dry-run"]
 model: inherit
 color: green
@@ -114,6 +114,8 @@ Set team using UUID as **plain string**:
 ```
 
 **Do NOT** use `{"id": "..."}` object format — fails with "Team id is not valid".
+
+**Do NOT** set the `components` field — team identification uses `customfield_10001` only, not Jira components.
 
 ## JIRA Tool Usage
 
