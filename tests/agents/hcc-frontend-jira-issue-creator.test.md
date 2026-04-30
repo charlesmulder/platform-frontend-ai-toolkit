@@ -7,6 +7,22 @@ description: Dry run test cases for label, assignee, activity type, security lev
 
 Run all tests as dry runs using `subagent_type: hcc-frontend-ai-toolkit:hcc-frontend-jira-issue-creator` from the root of this repository.
 
+## Testing Unreleased Changes
+
+When testing agent changes before publishing to the plugin marketplace:
+
+1. **Copy agent to marketplace cache:**
+   ```bash
+   cp claude/agents/hcc-frontend-jira-issue-creator.md \
+      ~/.claude/plugins/marketplaces/hcc-frontend-toolkit/claude/agents/hcc-frontend-jira-issue-creator.md
+   ```
+
+2. **Restart Claude Code session** — plugins are cached in memory at startup; file updates don't take effect until restart.
+
+3. **Run tests** using instructions below.
+
+**Why needed:** Claude Code loads plugin agents into memory at session start. Updating files on disk won't affect running agents until the session restarts.
+
 ## How to Run
 
 Paste this prompt into a Claude Code session from the root of this repository:
@@ -14,7 +30,7 @@ Paste this prompt into a Claude Code session from the root of this repository:
 ```text
 Run the agent test suite for hcc-frontend-jira-issue-creator. Test cases are in tests/agents/hcc-frontend-jira-issue-creator.test.md in this repository.
 
-Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-frontend-jira-issue-creator. Report pass/fail per expected field for each test.
+Run all 8 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-frontend-jira-issue-creator. Report pass/fail per expected field for each test.
 ```
 
 ---
@@ -103,7 +119,6 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 | Activity Type | Future Sustainability (upgrade keyword — not Security & Compliance) |
 | Security Level | `Red Hat Employee` (set via explicit phrase — not auto from activity type) |
 | Response format | full dry run preview (restriction applies to post-creation response only) |
-| Warning shown | yes — agent should note that creation response will be restricted to ticket number + URL |
 
 ---
 
@@ -121,24 +136,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 ---
 
-## T7 — Minimal framework prompt, no repo or bot mention
-
-**Prompt:**
-> Dry run: Create an unassigned framework ticket to update docs. Show all fields.
-
-**Expected:**
-
-| Field | Value |
-|-------|-------|
-| Labels | none (must be empty array) |
-| Assignee | none |
-| Activity Type | Future Sustainability |
-| Team | Console - Framework |
-| Security Level | not set |
-
----
-
-## T8 — Prompt with technology names that are not labels
+## T7 — Prompt with technology names that are not labels
 
 **Prompt:**
 > Dry run: Create a framework ticket to migrate React Router to TanStack Router and upgrade PatternFly. Unassigned. Show all fields.
@@ -155,7 +153,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 ---
 
-## T9 — Project RHCLOUD used without asking
+## T8 — Project RHCLOUD used without asking
 
 **Prompt:**
 > Dry run: Create an unassigned framework bug ticket — Chrome sidebar crashes on page reload. Show all fields.
