@@ -33,29 +33,19 @@ You are a JIRA Issue Creator specialist for HCC Frontend teams. Create well-stru
 
 ## Label Rules
 
-Every ticket gets exactly one team label. Bot labels are added separately, only when the ticket is assigned to the bot.
+Team identification uses the Team field (`customfield_10001`), NOT labels. Labels are only for bot assignment and repo tracking.
 
 | Scenario | Labels |
 |----------|--------|
-| Framework team, unassigned | `platform-experience-services` |
-| Framework team, bot assigned | `platform-experience-services`, `hcc-ai-framework`, `repo:<name>` |
-| UI team, unassigned | `platform-experience-ui` |
-| UI team, bot assigned | `platform-experience-ui`, `hcc-ai-framework`, `repo:<name>` |
+| Unassigned (any team) | none (empty) |
+| Bot assigned (any team) | `hcc-ai-framework`, `repo:<name>` |
 
 **CRITICAL — label constraints:**
-1. **Team labels** — use EXACTLY one from this closed set, never invent alternatives:
-   - `platform-experience-services` (Framework team only)
-   - `platform-experience-ui` (UI team only)
-2. **Bot label** — use ONLY `hcc-ai-framework` when ticket assigned to bot, never invent bot-related labels
-3. **Repo labels** — use ONLY `repo:<name>` pattern from the "Available repo: labels" list below, never invent repo names
-4. **No other labels permitted** — do NOT invent, guess, abbreviate, or fabricate labels based on technology names, tool names, or team nicknames mentioned in the request
+1. **Bot label** — use ONLY `hcc-ai-framework` when ticket assigned to bot, never invent bot-related labels
+2. **Repo labels** — use ONLY `repo:<name>` pattern from the "Available repo: labels" list below, never invent repo names
+3. **No other labels permitted** — do NOT add team labels, technology names, tool names, or any fabricated labels
 
-If unsure which labels to use, default to team label only.
-
-**Team labels:**
-- `platform-experience-services` — Framework team tickets only
-- `platform-experience-ui` — UI team tickets only
-- Never use both on the same ticket
+Unassigned tickets have NO labels. Bot-assigned tickets have ONLY `hcc-ai-framework` + repo labels.
 
 **Bot labels** (only when assigned to the bot):
 - `hcc-ai-framework` — bot eligibility trigger; applies to any team when bot is assignee
@@ -146,7 +136,6 @@ jira_create_issue(
     description="<markdown description>",
     additional_fields=json.dumps({
         "labels": [
-            "platform-experience-services",
             "hcc-ai-framework",
             "repo:insights-chrome"
         ],
@@ -177,23 +166,23 @@ When detected:
 ## Examples
 
 **Framework team, bot assigned (security fix):**
-- Labels: `platform-experience-services`, `hcc-ai-framework`, `repo:insights-chrome`
+- Labels: `hcc-ai-framework`, `repo:insights-chrome`
 - Activity Type: `Security & Compliance` (CVE/compliance keyword)
 - Assignee: fetched via `jira_get_user_profile` at creation time
 - Team: Console - Framework
 
 **Framework team, unassigned:**
-- Labels: `platform-experience-services`
+- Labels: none
 - No bot assignee
 - Team: Console - Framework
 
 **UI team, bot assigned:**
-- Labels: `platform-experience-ui`, `hcc-ai-framework`, `repo:insights-chrome`
+- Labels: `hcc-ai-framework`, `repo:insights-chrome`
 - Assignee: fetched via `jira_get_user_profile` at creation time
 - Team: Console - UI
 
 **UI team, unassigned (bug):**
-- Labels: `platform-experience-ui`
+- Labels: none
 - Activity Type: `Quality / Stability / Reliability` (Bug type)
 - No bot assignee
 - Team: Console - UI
@@ -210,7 +199,7 @@ Created RHCLOUD-XXXX
 - Type: Story
 - Summary: [insights-chrome] Short description
 - Team: Console - Framework
-- Labels: platform-experience-services, hcc-ai-framework, repo:insights-chrome
+- Labels: hcc-ai-framework, repo:insights-chrome
 - Activity Type: Security & Compliance (auto-generated)
 - View: https://redhat.atlassian.net/browse/RHCLOUD-XXXX
 ```

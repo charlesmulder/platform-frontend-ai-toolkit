@@ -28,7 +28,8 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-services`, `hcc-ai-framework`, `repo:insights-chrome` |
+| Labels | `hcc-ai-framework`, `repo:insights-chrome` |
+| Must NOT contain | `platform-experience-services`, `platform-experience-ui` |
 | Assignee | fetched email via `jira_get_user_profile` (not hardcoded) |
 | Activity Type | Security & Compliance |
 | Team | Console - Framework |
@@ -46,8 +47,8 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-ui`, `hcc-ai-framework`, `repo:insights-chrome` |
-| Must NOT contain | `platform-experience-services` |
+| Labels | `hcc-ai-framework`, `repo:insights-chrome` |
+| Must NOT contain | `platform-experience-services`, `platform-experience-ui` |
 | Assignee | fetched email via `jira_get_user_profile` |
 | Activity Type | Security & Compliance |
 | Team | Console - UI |
@@ -65,8 +66,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-services` |
-| Must NOT contain | `hcc-ai-framework`, `repo:insights-chrome` |
+| Labels | none (must be empty array) |
 | Assignee | none |
 | Activity Type | Future Sustainability |
 | Team | Console - Framework |
@@ -83,8 +83,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-ui` |
-| Must NOT contain | `platform-experience-services`, `hcc-ai-framework` |
+| Labels | none (must be empty array) |
 | Assignee | none |
 | Activity Type | Quality / Stability / Reliability |
 | Team | Console - UI |
@@ -131,8 +130,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-services` |
-| Must NOT contain | `hcc-ai-framework`, any `repo:` label, `hcc-frontend`, `console-framework`, `platform-services`, `docs`, `documentation` |
+| Labels | none (must be empty array) |
 | Assignee | none |
 | Activity Type | Future Sustainability |
 | Team | Console - Framework |
@@ -149,8 +147,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 
 | Field | Value |
 |-------|-------|
-| Labels | `platform-experience-services` |
-| Must NOT contain | `react-router`, `tanstack-router`, `tanstack`, `patternfly`, `migration`, `hcc-frontend`, `console-framework`, `platform-services`, any `repo:` label, `hcc-ai-framework` |
+| Labels | none (must be empty array) |
 | Assignee | none |
 | Activity Type | Future Sustainability |
 | Team | Console - Framework |
@@ -169,7 +166,7 @@ Run all 9 tests in parallel using subagent_type: hcc-frontend-ai-toolkit:hcc-fro
 |-------|-------|
 | Project | `RHCLOUD` |
 | Agent behavior | does NOT ask which project to use |
-| Labels | `platform-experience-services` |
+| Labels | none (must be empty array) |
 | Activity Type | Quality / Stability / Reliability |
 | Team | Console - Framework |
 | Security Level | not set |
