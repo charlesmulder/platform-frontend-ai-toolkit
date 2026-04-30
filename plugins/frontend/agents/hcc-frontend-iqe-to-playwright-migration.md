@@ -1125,6 +1125,27 @@ const TIMEOUTS = {
 } as const;
 ```
 
+**CRITICAL: Avoid waitForLoadState**
+
+Do NOT use `page.waitForLoadState()` in migrated tests. Background activity in the application may be continuous, making load state unreliable.
+
+```typescript
+// ❌ DON'T: waitForLoadState is unreliable
+await page.goto('/');
+await page.waitForLoadState('networkidle');  // AVOID - background activity may never stop
+
+// ✅ DO: Wait for specific elements instead
+await page.goto('/');
+await expect(page.locator('[data-ouia-component-id="chrome-user"]'))
+  .toBeVisible({ timeout: TIMEOUTS.ELEMENT_VISIBLE });
+```
+
+**Instead of waitForLoadState, use:**
+- `page.locator().waitFor()` - Wait for specific elements
+- `expect().toBeVisible()` - Assert element visibility
+- `page.waitForURL()` - Wait for URL changes
+- `page.waitForResponse()` - Wait for specific API calls
+
 **Why Symbolic Constants Matter:**
 - ✅ Centralized timeout management
 - ✅ Easy to adjust for slow CI environments
@@ -1806,6 +1827,7 @@ If CodeRabbit replies with follow-up comments, repeat the process until resolved
 ### DON'T:
 - ❌ Provide CI/CD pipeline setup guidance (pipelines already exist)
 - ❌ Hard-code timeout values (60000, 30000, etc.) - use constants
+- ❌ Use `page.waitForLoadState()` - background activity makes it unreliable
 - ❌ Create manual login/logout logic in regular tests (use global auth)
 - ❌ Allow tests that modify auth state to use shared session
 - ❌ Skip checking for existing test coverage overlap
