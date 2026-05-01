@@ -1415,6 +1415,138 @@ I found a parametrized test with 4 test cases. Should I:
 Recommendation: For 4 cases, I suggest option 2 (for loop).
 ```
 
+#### J. Handle Skipped Tests and Conditional Skips
+
+**CRITICAL: Avoid conditional skips in Playwright tests whenever possible.**
+
+Conditional skips make tests harder to maintain and can hide real issues. Always prefer fixing or removing tests over conditionally skipping them.
+
+**Detecting IQE Skipped Tests:**
+
+Look for these patterns in IQE tests:
+
+```python
+# Decorator-based skip
+@pytest.mark.skip(reason="Feature not implemented")
+def test_new_feature(application):
+    pass
+
+# Conditional skip decorator
+@pytest.mark.skipif(os.environ.get('ENV') == 'prod', reason="Not for production")
+def test_admin_feature(application):
+    pass
+
+# Runtime skip
+def test_conditional_feature(application):
+    if not feature_enabled():
+        pytest.skip("Feature disabled")
+    # Test logic
+```
+
+**Migration Strategy:**
+
+When encountering skipped IQE tests, you MUST:
+
+1. **STOP the conversion**
+2. **Warn the user explicitly:**
+
+```text
+⚠️ SKIPPED TEST DETECTED
+
+Test: test_new_feature()
+File: test_features.py:45
+Skip Reason: "Feature not implemented"
+
+This test was skipped in IQE. Before migrating, you should:
+
+1. **Verify the reason is still valid** - Has the feature been implemented since?
+2. **Review the test logic** - UI functionality may have changed significantly
+3. **Confirm the test still works** - The test logic may be outdated
+
+Options:
+1. Skip migration entirely (test is no longer relevant)
+2. Migrate and mark for manual review/verification
+3. Update test logic before migration (if you know what changed)
+
+⚠️ IMPORTANT: If migrated, this test REQUIRES manual verification by QE
+to ensure it matches current UI behavior.
+
+How would you like to proceed?
+```
+
+3. **Wait for user decision**
+4. **Document the skip status** if migrating
+
+**If User Wants to Migrate Skipped Tests:**
+
+```typescript
+// ❌ DON'T: Use conditional skips
+test('admin feature', async ({ page }) => {
+  if (process.env.ENV === 'prod') {
+    test.skip(); // AVOID - conditional logic in tests
+  }
+  // Test logic
+});
+
+// ✅ DO: Use test.skip() with clear reasoning (only if absolutely necessary)
+test.skip('admin feature - not available in production', async ({ page }) => {
+  // Test logic
+});
+
+// ✅ BETTER: Split into separate test files by environment
+// tests/staging/admin-features.spec.ts
+test('admin feature', async ({ page }) => {
+  // Only runs in staging (controlled by test runner config)
+});
+```
+
+**Document Migrated Skipped Tests:**
+
+In migration documentation, add a prominent warning:
+
+```markdown
+### Test: test_new_feature
+
+⚠️ **REQUIRES MANUAL VERIFICATION**
+
+**Original Status:** SKIPPED in IQE
+**Skip Reason:** "Feature not implemented"
+**Migration Status:** Converted but UNTESTED
+
+**CRITICAL ACTIONS REQUIRED:**
+1. ✅ Verify the feature is now implemented in the UI
+2. ✅ Review test logic - UI may have changed since test was written
+3. ✅ Run test manually and confirm it passes
+4. ✅ Update test logic if UI behavior differs from expectations
+5. ✅ Remove skip or re-skip with updated reasoning
+
+**Risk Level:** HIGH - Test logic may be outdated or incorrect
+```
+
+**Best Practices for Skip Migration:**
+
+1. **Prefer removing over migrating** - If a test has been skipped for months/years, consider not migrating it
+2. **No conditional skips** - Avoid `if/else` logic that conditionally skips tests
+3. **Clear skip reasons** - If you must skip, make the reason obvious in the test name
+4. **Immediate review** - Flag all migrated skipped tests for QE review before PR merge
+5. **Update documentation** - Always note that skipped tests need verification
+
+**Questions to Ask User:**
+
+When encountering skipped tests:
+
+1. **"Is this test still relevant?"**
+   - No → Skip migration entirely
+   - Yes → Migrate but mark for review
+
+2. **"Do you know if the feature/UI has changed since this was skipped?"**
+   - Yes → Update test logic before migration
+   - No → Migrate as-is but require manual verification
+
+3. **"Should I migrate this test at all?"**
+   - Consider the cost of maintaining outdated test logic
+   - Skipped tests often indicate incomplete features or deprecated functionality
+
 ### Phase 3: Documentation Generation
 
 For EACH converted test, generate a test step documentation file that QE can use for manual verification.
@@ -1823,11 +1955,16 @@ If CodeRabbit replies with follow-up comments, repeat the process until resolved
 - ✅ Preserve test intent and coverage exactly
 - ✅ Use Playwright best practices (auto-waiting, role-based selectors)
 - ✅ Include environment variable requirements in docs
+- ✅ Identify skipped tests and warn user before migration
+- ✅ Require manual verification for all migrated skipped tests
+- ✅ Document skip reasons and verification requirements prominently
 
 ### DON'T:
 - ❌ Provide CI/CD pipeline setup guidance (pipelines already exist)
 - ❌ Hard-code timeout values (60000, 30000, etc.) - use constants
 - ❌ Use `page.waitForLoadState()` - background activity makes it unreliable
+- ❌ Use conditional skips in tests (if/else logic that skips)
+- ❌ Migrate skipped tests without warning user and requiring manual verification
 - ❌ Create manual login/logout logic in regular tests (use global auth)
 - ❌ Allow tests that modify auth state to use shared session
 - ❌ Skip checking for existing test coverage overlap
@@ -1848,19 +1985,22 @@ Before starting conversion:
 3. ☐ **Check for existing test coverage overlap in destination repo**
 4. ☐ **Ask user how to handle any overlapping coverage**
 5. ☐ Identify tests that may affect auth state (logout, org switch, etc.)
-6. ☐ Create comprehensive migration plan with repo assignments
-7. ☐ Get user approval on repository assignments
-8. ☐ Clarify selector strategy preference
+6. ☐ **Identify skipped tests (@pytest.mark.skip, pytest.skip()) and warn user**
+7. ☐ Create comprehensive migration plan with repo assignments
+8. ☐ Get user approval on repository assignments
+9. ☐ Clarify selector strategy preference
 
 During conversion:
 1. ☐ Set up playwright.config.ts for each target repo (or update existing)
 2. ☐ **Use symbolic constants for ALL timeout values**
 3. ☐ **Verify no duplicate authentication in tests**
 4. ☐ **Use isolated browser context for auth-affecting tests**
-5. ☐ Convert page objects with proper imports
-6. ☐ Convert tests using playwright-test-auth patterns
-7. ☐ **Generate documentation for each test in destination repo structure**
-8. ☐ Organize files by target repository
+5. ☐ **Avoid conditional skips - no if/else logic that skips tests**
+6. ☐ **For migrated skipped tests: add prominent manual verification warnings**
+7. ☐ Convert page objects with proper imports
+8. ☐ Convert tests using playwright-test-auth patterns
+9. ☐ **Generate documentation for each test in destination repo structure**
+10. ☐ Organize files by target repository
 
 After conversion:
 1. ☐ Create migration summary (NO CI pipeline guidance)
