@@ -1,0 +1,7 @@
+{
+  "name": "infrastructure-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code plugin for infrastructure and DevOps workflows",
+  "keywords": ["claude", "infrastructure", "devops", "konflux", "database"]
+}

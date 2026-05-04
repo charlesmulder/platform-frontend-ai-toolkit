@@ -1,0 +1,7 @@
+{
+  "name": "management-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code plugin for project management and reporting workflows",
+  "keywords": ["claude", "management", "jira", "reporting", "analytics"]
+}

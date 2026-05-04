@@ -6,11 +6,11 @@ Guide for creating and maintaining Claude sub-agents and MCP servers in the HCC 
 
 ### 1. Create the Agent File
 
-Add a new Markdown file in `claude/agents/` with the `hcc-frontend-` or `hcc-infra-` prefix:
+Add a new Markdown file in the appropriate plugin's `agents/` directory with the `hcc-frontend-` prefix:
 
 ```bash
-# Example: creating a new CSS utilities agent
-touch claude/agents/hcc-frontend-css-utilities.md
+# Example: creating a new CSS utilities agent for frontend plugin
+touch plugins/frontend/agents/hcc-frontend-css-utilities.md
 ```
 
 ### 2. Agent File Format
@@ -47,46 +47,55 @@ Detailed prompt describing when and how Claude should use this agent.
 
 See [AGENT_GUIDELINES.md](../AGENT_GUIDELINES.md) for detailed examples of well-scoped vs poorly-scoped agents.
 
-### 4. Generate Cursor Rules
+### 4. Test the Agent
 
-After creating or modifying an agent, regenerate the Cursor rules:
-
-```bash
-# Regenerate all Cursor rules from Claude agents
-npm run convert-cursor
-
-# Verify sync
-npm run check-cursor-sync
-```
-
-The conversion script (`scripts/convert-to-cursor.js`) transforms Claude Markdown agents into Cursor `.mdc` rule files. The sync check validates that all agents have corresponding Cursor rules.
-
-### 5. Bump Plugin Version
-
-Update the version in **both** plugin manifests so users receive the update:
-
-1. `claude/.claude-plugin/plugin.json` — the plugin manifest
-2. `.claude-plugin/marketplace.json` — the marketplace metadata
-
-Both must stay in sync:
-
-```json
-{
-  "version": "1.10.3"  // Increment appropriately — same value in both files
-}
-```
-
-Use semantic versioning:
-- **Patch** (1.10.2 → 1.10.3): Bug fixes to existing agents
-- **Minor** (1.10.2 → 1.11.0): New agents or features
-- **Major** (1.10.2 → 2.0.0): Breaking changes to agent behavior
-
-### 6. Commit Both Formats
-
-Always commit Claude agents and Cursor rules together:
+Test the agent locally before submitting:
 
 ```bash
-git add claude/agents/hcc-frontend-css-utilities.md cursor/rules/css-utilities.mdc
+# Use Claude Code to test the agent
+# Task with subagent_type='your-agent-name'
+```
+
+### 5. Use Conventional Commits
+
+Plugin versions are **automatically managed** by CI. Your commit message controls the version bump:
+
+```bash
+# Patch version bump (1.0.0 → 1.0.1) - Bug fixes
+git commit -m "fix(agent-name): fix bug in agent logic"
+
+# Minor version bump (1.0.0 → 1.1.0) - New features/agents
+git commit -m "feat(agent-name): add new agent for CSS utilities"
+
+# Major version bump (1.0.0 → 2.0.0) - Breaking changes
+git commit -m "feat(agent-name)!: redesign agent interface"
+
+# Or with BREAKING CHANGE footer
+git commit -m "feat(agent-name): change agent behavior
+
+BREAKING CHANGE: This changes how the agent processes input"
+```
+
+**Important:** The automated release system:
+- Detects changes in `plugins/*/agents/` when merged to master
+- Analyzes your conventional commits to determine version bump
+- Updates `plugin.json` and `marketplace.json` automatically
+- Creates git tag `{plugin-name}@{version}` and GitHub release
+- No manual version bumping required!
+
+**Testing locally:** Validate commit format before pushing:
+
+```bash
+# Check your commit uses conventional format (feat/fix/BREAKING CHANGE)
+git log -1 --pretty=%B
+```
+
+### 6. Commit the Agent
+
+Commit the new agent with a conventional commit message:
+
+```bash
+git add plugins/frontend/agents/hcc-frontend-css-utilities.md
 git commit -m "feat(css-utilities): add CSS utility specialist agent"
 ```
 
@@ -252,29 +261,16 @@ Runs on all PRs and master pushes:
 2. `npx nx run-many -t build` — build all packages
 3. `npx nx run-many -t lint` — lint all packages
 4. `npx nx run-many -t test` — run all tests
-5. `npm run check-cursor-sync` — verify agent ↔ cursor sync
-
-### Cursor Sync Check (`cursor-sync-check.yml`)
-
-Triggered on PRs modifying `claude/agents/`, `cursor/rules/`, or conversion scripts:
-1. Regenerates all Cursor rules from scratch
-2. Compares against committed rules
-3. Fails if any differences exist
-
-### Pre-push Hook
-
-Husky runs `npm run check-cursor-sync` before every push. Fix sync issues with `npm run convert-cursor`.
 
 ## Checklist for New Agents
 
-- [ ] File created in `claude/agents/` with proper prefix
+- [ ] File created in `plugins/{plugin-name}/agents/` with proper prefix
 - [ ] YAML frontmatter with `description` and `capabilities`
 - [ ] Focused scope with clear boundaries
 - [ ] Usage examples included
-- [ ] `npm run convert-cursor` executed
-- [ ] `npm run check-cursor-sync` passes
-- [ ] Plugin version bumped in `claude/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`
-- [ ] Both `.md` and `.mdc` files committed together
+- [ ] Tested locally with Claude Code
+- [ ] Commit uses conventional commit format (`feat:`, `fix:`, etc.)
+- [ ] ✅ Plugin version will auto-bump on merge to master (no manual version bump needed!)
 
 ## Checklist for New MCP Servers
 

@@ -9,9 +9,7 @@
     "test:watch": "nx test @redhat-cloud-services/hcc-pf-mcp --watch",
     "test:coverage": "nx test @redhat-cloud-services/hcc-pf-mcp --coverage",
     "clean": "nx reset",
-    "convert-cursor": "node scripts/convert-to-cursor.js",
-    "check-cursor-sync": "node scripts/check-cursor-sync.js",
-    "precommit": "npm run check-cursor-sync",
+    "sync-plugin-versions": "node scripts/sync-plugin-versions.js",
     "prepare": "husky"
   },
   "private": true,

@@ -26,43 +26,40 @@ An Nx monorepo serving as a centralized hub for AI-assisted development tools us
 ```text
 platform-frontend-ai-toolkit/
 ├── .claude-plugin/
-│   └── marketplace.json          # Marketplace config (plugin discovery)
+│   └── marketplace.json          # Marketplace config (lists all plugins)
 ├── .github/workflows/
-│   ├── ci.yml                    # Build, lint, test, cursor-sync check
-│   ├── cursor-sync-check.yml     # PR check: Claude agents ↔ Cursor rules sync
-│   └── release.yml               # Nx Release → npm publish on master push
+│   ├── ci.yml                    # Build, lint, test
+│   └── release.yml               # NX Release → versions + publishes packages/plugins
 ├── .mcp.json                     # Local MCP config (nx-mcp for dev)
-├── claude/
-│   ├── .claude-plugin/
-│   │   └── plugin.json           # Plugin manifest (name, version, MCP servers)
-│   └── agents/                   # Claude sub-agent definitions (.md)
-│       ├── hcc-frontend-*.md     # Frontend + DB upgrade agents (30 files)
-│       └── hcc-infra-*.md        # Infrastructure agents (supported by converter)
-├── cursor/
-│   ├── rules/                    # Auto-generated Cursor rules (.mdc)
-│   └── mcp-template.json         # MCP server config template for Cursor
+├── plugins/
+│   ├── frontend/                 # Frontend development plugin
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json       # Plugin manifest
+│   │   ├── agents/               # 14 frontend agents
+│   │   ├── package.json          # For NX versioning (private)
+│   │   └── project.json          # NX project config
+│   ├── infrastructure/           # Infrastructure & DevOps plugin
+│   │   ├── .claude-plugin/
+│   │   │   └── plugin.json
+│   │   ├── agents/               # 13 infrastructure agents
+│   │   ├── skills/               # Utility skills (db-upgrader)
+│   │   ├── package.json
+│   │   └── project.json
+│   └── management/               # Project management plugin
+│       ├── .claude-plugin/
+│       │   └── plugin.json
+│       ├── agents/               # 3 management agents
+│       ├── package.json
+│       └── project.json
 ├── packages/
 │   ├── hcc-pf-mcp/               # @redhat-cloud-services/hcc-pf-mcp
-│   │   ├── src/lib/tools/        # MCP tool implementations
-│   │   ├── src/lib/examples/     # PatternFly usage examples
-│   │   ├── src/lib/utils/        # Shared utilities
-│   │   └── src/lib/__tests__/    # Jest tests
 │   ├── hcc-feo-mcp/              # @redhat-cloud-services/hcc-feo-mcp
-│   │   └── src/lib/tools/        # FEO schema/validation tools
 │   └── hcc-kessel-mcp/           # @redhat-cloud-services/hcc-kessel-mcp
-│       └── src/lib/              # Kessel permission mapping tools
 ├── scripts/
-│   ├── convert-to-cursor.js      # Claude agent → Cursor rule converter
-│   └── check-cursor-sync.js      # Validates Claude ↔ Cursor sync
-├── tests/
-│   ├── agents/                   # Agent test definitions (.test.md)
-│   └── migration-demo/           # IQE→Playwright migration example
-├── AGENT_GUIDELINES.md           # Agent design philosophy and best practices
-├── DB_UPGRADE_AGENTS.md          # Database upgrade agent documentation
-├── OUTSTANDING_WORK.md           # Roadmap and planned features
-├── nx.json                       # Nx workspace config
-├── package.json                  # Root workspace package
-└── tsconfig.base.json            # Shared TypeScript config
+│   └── sync-plugin-versions.js  # Syncs package.json version → plugin.json
+├── docs/                         # Documentation
+├── nx.json                       # NX workspace config
+└── package.json                  # Root workspace package
 ```
 
 ## Published npm Packages
@@ -90,9 +87,7 @@ npm run test:mcp           # hcc-pf-mcp only
 npm run test:watch         # hcc-pf-mcp in watch mode
 npm run test:coverage      # hcc-pf-mcp with coverage
 
-# Agent development
-npm run convert-cursor     # Regenerate Cursor rules from Claude agents
-npm run check-cursor-sync  # Verify Claude ↔ Cursor sync
+# Agent development — test agents locally in Claude Code before commit
 
 # Nx utilities
 npx nx reset               # Clean Nx cache
@@ -108,16 +103,15 @@ npx nx release -y          # Versioning + npm publish + GitHub releases
 
 ## Key Concepts
 
-### Agent ↔ Cursor Sync
+### Plugin Organization
 
-Claude agents in `claude/agents/` are the source of truth. Cursor rules in `cursor/rules/` are auto-generated:
+Agents are organized into 3 specialized plugins:
 
-1. Edit `.md` files in `claude/agents/`
-2. Run `npm run convert-cursor` to regenerate `.mdc` files
-3. Run `npm run check-cursor-sync` to validate
-4. Commit both Claude and Cursor files together
+- **Frontend** (`plugins/frontend/agents/`) - Development tools (14 agents)
+- **Infrastructure** (`plugins/infrastructure/agents/`) - DevOps automation (13 agents)
+- **Management** (`plugins/management/agents/`) - Project management (3 agents)
 
-The Husky pre-push hook and CI both enforce sync. Pushes fail if rules are out of sync.
+Each plugin has its own package.json for NX versioning and plugin.json for Claude Code metadata.
 
 ### MCP Server Architecture
 
@@ -128,19 +122,33 @@ Each MCP server package follows the same pattern:
 - Each tool returns a `[name, schema, handler]` tuple
 - Schemas **must** use Zod (not JSON Schema) — the MCP SDK calls `safeParseAsync()` on schemas
 
-### Nx Release
+### Automated Release
 
-Packages are independently versioned using conventional commits:
-- `feat:` → minor bump
-- `fix:` → patch bump
-- `feat!:` or `BREAKING CHANGE:` → major bump
-- Release runs on master push via GitHub Actions
+The repository uses **automated versioning** for both plugins and packages:
+
+**Plugin Releases** (when `plugins/*/agents/` changes):
+- NX detects changes in plugin projects
+- Analyzes conventional commits to determine bump type
+- Versions `package.json` files (private, not published to npm)
+- Post-version hook syncs to `plugin.json` and `marketplace.json`
+- Creates `{plugin-name}@{version}` git tags and GitHub releases
+- Runs on every master push via GitHub Actions
+
+**Package Releases** (when `packages/` changes):
+- Uses Nx Release with independent versioning
+- Conventional commits control version bumps:
+  - `feat:` → minor bump
+  - `fix:` → patch bump
+  - `feat!:` or `BREAKING CHANGE:` → major bump
+- Publishes to npm with provenance
+- Creates GitHub releases per package
 
 ### Plugin Distribution
 
-- Marketplace: `.claude-plugin/marketplace.json` (root) points to `claude/` subdirectory
-- Plugin: `claude/.claude-plugin/plugin.json` defines agents + MCP servers
-- Users install via: `/plugin marketplace add RedHatInsights/platform-frontend-ai-toolkit`
+- Marketplace: `.claude-plugin/marketplace.json` (root) lists all 3 plugins
+- Each plugin: `plugins/{name}/.claude-plugin/plugin.json` defines agents
+- Versions are auto-managed by NX Release via CI
+- Users install specific plugins: `/plugin install frontend-plugin@hcc-frontend-toolkit`
 
 ## Coding Conventions
 
@@ -150,19 +158,19 @@ Packages are independently versioned using conventional commits:
 4. **MCP tool schemas**: Always use Zod constructors, never JSON Schema objects
 5. **MCP tool signatures**: Return `[name, { description, inputSchema }, handler]` tuple
 6. **TypeScript strict mode**: `strict: true` in tsconfig, `noUnusedLocals`, `noImplicitReturns`
-7. **Conventional commits**: `type(scope): description` — scopes: agent names, package names, `scripts`, `ci`
-8. **Version bumps**: Bump `claude/.claude-plugin/plugin.json` version when adding/modifying agents
+7. **Conventional commits**: `type(scope): description` — scopes: agent names, package names, `scripts`, `ci`. This controls automated version bumping!
+8. **Version bumps**: **AUTOMATED** - plugin versions auto-increment on master merge based on conventional commits. No manual bumping required.
 9. **Test colocation**: Tests live in `src/lib/__tests__/` within each package
 10. **Dependencies**: MCP servers must include `zod` as a dependency (MCP SDK requirement)
 
 ## Common Pitfalls
 
-1. **Forgetting cursor sync**: Modifying Claude agents without running `npm run convert-cursor` will fail CI and the pre-push hook
+1. **Wrong plugin directory**: Frontend agents go in `plugins/frontend/agents/`, not `plugins/infrastructure/agents/`
 2. **JSON Schema in MCP tools**: Using `{ type: 'object', properties: {...} }` instead of Zod schemas causes `safeParseAsync is not a function` errors at runtime
 3. **Missing Zod dependency**: New MCP packages must include `zod` in their `package.json` dependencies
-4. **Plugin version not bumped**: Users won't receive agent updates if `plugin.json` version isn't incremented
+4. **Wrong commit format**: Not using conventional commits (`feat:`, `fix:`, etc.) means version won't bump correctly or release will be skipped
 5. **Agent too broad**: Agents should be focused on specific tasks, not general-purpose (see AGENT_GUIDELINES.md for examples)
-6. **Nx cache stale**: After major changes, run `npx nx reset` to clear the Nx daemon cache
+6. **NX cache stale**: After major changes, run `npx nx reset` to clear the NX daemon cache
 7. **System dep for builds**: CI requires `libsecret-1-dev` for builds — documented in CI workflow
 
 ## Documentation Index

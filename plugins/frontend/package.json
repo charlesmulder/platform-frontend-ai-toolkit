@@ -1,0 +1,7 @@
+{
+  "name": "frontend-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code plugin for frontend development workflows",
+  "keywords": ["claude", "frontend", "react", "typescript", "testing"]
+}
