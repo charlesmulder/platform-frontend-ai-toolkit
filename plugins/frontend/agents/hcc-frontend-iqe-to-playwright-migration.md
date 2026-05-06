@@ -824,6 +824,327 @@ test('user is logged in', async ({ page }) => {
 });
 ```
 
+## CRITICAL REQUIREMENT: Custom Credentials Beyond E2E_USER/E2E_PASSWORD
+
+**When tests require additional credentials beyond the standard E2E_USER and E2E_PASSWORD, special setup is required.**
+
+The default authentication setup uses `E2E_USER` and `E2E_PASSWORD` environment variables. However, some tests may need additional credentials (e.g., special service accounts, admin users, API tokens, organization-specific credentials).
+
+### Detecting Tests with Custom Credentials
+
+Look for these patterns in IQE tests:
+
+```python
+# IQE - Multiple credential sets
+def test_admin_features(admin_user, admin_password):
+    # Uses different credentials than default user
+    pass
+
+# IQE - Service account credentials
+def test_api_integration(service_account_token):
+    # Uses API token instead of user/password
+    pass
+
+# IQE - Organization-specific credentials
+def test_multi_org_access(org1_user, org2_user):
+    # Tests require credentials for different organizations
+    pass
+
+# Environment variables beyond E2E_USER/E2E_PASSWORD
+admin_username = os.environ.get('ADMIN_USER')
+api_token = os.environ.get('SERVICE_ACCOUNT_TOKEN')
+```
+
+### Requirements for Custom Credentials
+
+When you detect tests requiring custom credentials, you MUST inform the user that THREE changes are needed:
+
+#### 1. Pipeline Configuration Update
+
+The test pipeline must use **v2 of the shared pipeline definition** from `konflux-pipelines` to support flexible secrets.
+
+```text
+⚠️ CUSTOM CREDENTIALS DETECTED
+
+Test: test_admin_features()
+Credentials: ADMIN_USER, ADMIN_PASSWORD (beyond standard E2E_USER/E2E_PASSWORD)
+
+Required Changes:
+
+1. PIPELINE CONFIGURATION
+   - Update to v2 of shared pipeline definition from konflux-pipelines
+   - This version supports flexible secrets management
+   - Location: <repository>/.tekton/ directory
+   - Reference: konflux-pipelines shared pipeline v2
+
+2. CREDENTIAL STORAGE
+   - Add credentials to konflux-user-data repository
+   - File: konflux-user-data/<appropriate-file>.yaml
+   - Format: Follow existing secret patterns in that repo
+
+3. TEST IMPLEMENTATION
+   - Tests must consume credentials via environment variables
+   - Use isolated auth session to avoid interfering with shared session
+   - See pattern below
+
+How would you like to proceed?
+```
+
+#### 2. Add Credentials to konflux-user-data
+
+Credentials must be added to the appropriate file in the `konflux-user-data` repository:
+
+**User Guidance:**
+```text
+You'll need to add the following credentials to konflux-user-data:
+
+Credentials needed:
+- ADMIN_USER
+- ADMIN_PASSWORD
+
+Steps:
+1. Clone konflux-user-data repository
+2. Locate the appropriate secrets file for your application
+3. Add the credentials following existing patterns
+4. Submit PR to konflux-user-data for review
+
+Example pattern (check existing files for exact format):
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: <app-name>-e2e-secrets
+stringData:
+  ADMIN_USER: <admin-username>
+  ADMIN_PASSWORD: <admin-password>
+```
+
+Note: Actual format may vary - refer to existing secrets in the repository.
+```
+
+#### 3. Test Implementation with Isolated Auth
+
+Tests consuming custom credentials should use **isolated authentication sessions** to avoid interfering with the shared session.
+
+**Pattern for Custom Credentials with Isolated Auth:**
+
+```typescript
+import { test as base, expect } from '@playwright/test';
+import { chromium } from '@playwright/test';
+
+// Timeout constants
+const TIMEOUTS = {
+  PAGE_LOAD: 60000,
+  ELEMENT_VISIBLE: 10000,
+  API_RESPONSE: 30000,
+} as const;
+
+// Helper to authenticate with custom credentials
+async function authenticateWithCustomCredentials(context, username: string, password: string) {
+  const page = await context.newPage();
+
+  // Navigate to app (will redirect to SSO)
+  await page.goto('/');
+
+  // Perform SSO login
+  await page.fill('#username', username);
+  await page.fill('#password', password);
+  await page.click('button[type="submit"]');
+
+  // Wait for authentication to complete
+  await expect(page.locator('[data-ouia-component-id="chrome-user"]'))
+    .toBeVisible({ timeout: TIMEOUTS.ELEMENT_VISIBLE });
+
+  await page.close();
+  return context;
+}
+
+// Create isolated test fixture for custom credentials
+const test = base.extend({
+  adminContext: async ({ browser }, use) => {
+    // Create isolated context (does NOT use shared auth)
+    const context = await browser.newContext();
+
+    // Authenticate with custom credentials from environment
+    const adminUser = process.env.ADMIN_USER;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminUser || !adminPassword) {
+      throw new Error('ADMIN_USER and ADMIN_PASSWORD environment variables required');
+    }
+
+    await authenticateWithCustomCredentials(context, adminUser, adminPassword);
+
+    await use(context);
+
+    // Cleanup
+    await context.close();
+  },
+});
+
+// Use custom credentials in test
+test('admin features require admin access', async ({ adminContext }) => {
+  const page = await adminContext.newPage();
+
+  // Test logic using admin credentials
+  await page.goto('/admin/settings');
+  await expect(page.getByRole('heading', { name: 'Admin Settings' }))
+    .toBeVisible({ timeout: TIMEOUTS.ELEMENT_VISIBLE });
+
+  // Verify admin-only feature
+  await expect(page.getByRole('button', { name: 'Delete Organization' }))
+    .toBeVisible({ timeout: TIMEOUTS.ELEMENT_VISIBLE });
+
+  await page.close();
+});
+```
+
+**Key Points:**
+- ✅ Creates isolated browser context (does NOT use `storageState: 'playwright/.auth/user.json'`)
+- ✅ Authenticates with custom credentials via environment variables
+- ✅ Does NOT interfere with shared authentication session
+- ✅ Cleans up context after test completes
+
+### Alternative: API Token Authentication
+
+For tests using API tokens or service accounts:
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('API integration with service account', async ({ request }) => {
+  const serviceToken = process.env.SERVICE_ACCOUNT_TOKEN;
+
+  if (!serviceToken) {
+    throw new Error('SERVICE_ACCOUNT_TOKEN environment variable required');
+  }
+
+  // Use token in API requests
+  const response = await request.get('/api/admin/users', {
+    headers: {
+      'Authorization': `Bearer ${serviceToken}`,
+    },
+    timeout: TIMEOUTS.API_RESPONSE,
+  });
+
+  expect(response.ok()).toBeTruthy();
+  const data = await response.json();
+  expect(data.users).toBeDefined();
+});
+```
+
+### Detection and Warning Workflow
+
+When you detect tests requiring custom credentials:
+
+1. **STOP the conversion**
+2. **Identify the credentials needed:**
+   - Environment variable names
+   - Purpose (admin user, service account, etc.)
+   - How they're used in the IQE test
+
+3. **Warn the user with comprehensive guidance:**
+
+```text
+⚠️ CUSTOM CREDENTIALS DETECTED
+
+Test: test_admin_dashboard()
+File: test_admin.py:45
+
+This test requires credentials beyond standard E2E_USER/E2E_PASSWORD:
+- ADMIN_USER (environment variable in IQE test)
+- ADMIN_PASSWORD (environment variable in IQE test)
+
+THREE REQUIRED CHANGES:
+
+1. 📋 PIPELINE CONFIGURATION (Infrastructure Team)
+   - Update test pipeline to use v2 of shared pipeline definition
+   - Source: konflux-pipelines repository
+   - This version supports flexible secrets for custom credentials
+
+2. 🔐 CREDENTIAL STORAGE (Security/DevOps)
+   - Add ADMIN_USER and ADMIN_PASSWORD to konflux-user-data repository
+   - File: konflux-user-data/<app-name>-secrets.yaml
+   - Follow existing secret patterns in that repository
+
+3. 🧪 TEST IMPLEMENTATION (QE/Development)
+   - Tests will use isolated authentication with custom credentials
+   - Pattern: Isolated browser context (does NOT use shared session)
+   - Environment variables consumed: ADMIN_USER, ADMIN_PASSWORD
+
+Would you like me to:
+1. Convert this test using isolated auth pattern (I'll implement option 3)
+2. Skip this test and document it for manual conversion
+3. Provide detailed implementation guidance for all 3 changes
+
+Note: Options 1 and 2 (pipeline + credentials) require separate PRs to
+konflux-pipelines and konflux-user-data repositories.
+```
+
+4. **Wait for user decision**
+
+5. **If proceeding with conversion:**
+   - Implement isolated auth pattern
+   - Document all 3 required changes clearly
+   - Add TODO comments referencing pipeline and credential setup
+
+### Documentation for Custom Credentials
+
+In migration documentation, create a dedicated section:
+
+```markdown
+### Test: test_admin_features
+
+⚠️ **CUSTOM CREDENTIALS REQUIRED**
+
+This test requires credentials beyond the standard E2E_USER/E2E_PASSWORD.
+
+**Custom Credentials Needed:**
+- `ADMIN_USER` - Admin account username
+- `ADMIN_PASSWORD` - Admin account password
+
+**Three Required Setup Steps:**
+
+#### 1. Pipeline Configuration (Infrastructure Team)
+- [ ] Update test pipeline to v2 of shared pipeline definition
+- [ ] Source: konflux-pipelines repository
+- [ ] Required for flexible secrets support
+
+#### 2. Credential Storage (DevOps/Security)
+- [ ] Add credentials to konflux-user-data repository
+- [ ] File: `konflux-user-data/<app-name>-secrets.yaml`
+- [ ] Follow existing secret patterns
+
+#### 3. Test Implementation (Already Completed)
+- [x] Test uses isolated browser context
+- [x] Consumes ADMIN_USER and ADMIN_PASSWORD from environment
+- [x] Does NOT interfere with shared authentication session
+
+**Authentication Approach:**
+This test creates an isolated browser context and authenticates using
+custom admin credentials. It does NOT use the shared authentication
+session (`playwright/.auth/user.json`) to avoid credential conflicts.
+
+**Environment Variables:**
+```bash
+ADMIN_USER=<admin-account-username>
+ADMIN_PASSWORD=<admin-account-password>
+```
+
+**Related PRs:**
+- [ ] Pipeline update PR: <link when created>
+- [ ] Credential storage PR: <link when created>
+```
+
+### Best Practices
+
+1. **Identify Early:** Detect custom credentials during initial test analysis
+2. **Document Thoroughly:** List all 3 required changes clearly
+3. **Isolate Authentication:** Always use isolated context for custom credentials
+4. **Environment Variables:** Never hard-code credentials
+5. **Coordinate Teams:** Pipeline and credential changes require collaboration
+6. **Test Locally:** Ensure tests work with mock credentials before CI integration
+
 ## MIGRATION WORKFLOW
 
 ### Phase 1: Repository Identification and Planning
